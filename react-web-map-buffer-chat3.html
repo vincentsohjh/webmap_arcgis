@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ArcGIS WebMap with Buffer Chat</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css" />
+  <style>
+    html, body, #viewDiv {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #container {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+    #viewDiv {
+      flex: 3;
+      position: relative;
+    }
+    #chatContainer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-left: 2px solid #ddd;
+      background-color: #f9f9f9;
+    }
+    #chatLog {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      border-bottom: 1px solid #ddd;
+      background-color: #fcfcfc;
+    }
+    .chat-message {
+      margin-bottom: 10px;
+      line-height: 1.3em;
+    }
+    .chat-message.user {
+      text-align: right;
+      color: #1a73e8;
+    }
+    .chat-message.bot {
+      text-align: left;
+      color: #333;
+    }
+    #chatInputContainer {
+      display: flex;
+      padding: 10px;
+      background-color: #fff;
+    }
+    #chatInput {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 1rem;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    #chatInput:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 5px rgba(26,115,232, 0.5);
+    }
+    #sendBtn {
+      margin-left: 8px;
+      background-color: #1a73e8;
+      border: none;
+      color: white;
+      padding: 0 16px;
+      font-size: 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    #sendBtn:hover {
+      background-color: #155ab6;
+    }
+    #instructions {
+      padding: 10px;
+      font-size: 0.9rem;
+      color: #666;
+      border-top: 1px solid #ddd;
+      background-color: #f0f4fa;
+    }
+    #bufferDistanceInput {
+      width: 100px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      margin-left: 8px;
+    }
+    #selectedPointInfo {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      padding: 6px 10px;
+      background-color: rgba(255,255,255,0.85);
+      border-radius: 4px;
+      font-size: 0.9rem;
+      box-shadow: 0 0 8px rgba(0,0,0,0.15);
+      max-width: 320px;
+      z-index: 10;
+    }
+    #clearBuffersBtn {
+      margin-left: 8px;
+      background-color: #e04e4e;
+      border: none;
+      color: white;
+      padding: 0 12px;
+      font-size: 0.9rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    #clearBuffersBtn:hover {
+      background-color: #b23636;
+    }
+  </style>
+  <script src="https://js.arcgis.com/4.32/"></script>
+</head>
+<body>
+  <div id="container">
+    <div id="viewDiv"></div>
+    <div id="chatContainer">
+      <div id="chatLog"></div>
+      <div id="chatInputContainer">
+        <input type="text" id="chatInput" placeholder="Ask me to create a buffer..." aria-label="Chat input" />
+        <button id="sendBtn" aria-label="Send message">Send</button>
+        <button id="clearBuffersBtn" title="Clear all buffers">Clear Buffers</button>
+      </div>
+      <div id="instructions">
+        <strong>Instructions:</strong><br/>
+        - Click on points on the map or refer to points by ID.<br/>
+        - Example commands: <br/>
+        &nbsp;&nbsp;"Create a 500 meter planar buffer around point 1"<br/>
+        &nbsp;&nbsp;"Create a 1 km geodesic buffer"<br/>
+        &nbsp;&nbsp;"Create multiple ring buffers with 100, 300, 500 meters"<br/>
+        &nbsp;&nbsp;"Clear all buffers"<br/>
+      </div>
+    </div>
+  </div>
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/Graphic",
+      "esri/geometry/geometryEngine",
+      "esri/geometry/Polygon",
+      "esri/geometry/Point",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/PopupTemplate",
+      "esri/widgets/Legend"
+    ], function(Map, MapView, FeatureLayer, Graphic, geometryEngine, Polygon, Point, SimpleFillSymbol, SimpleMarkerSymbol, PopupTemplate, Legend) {
+      // Variables and references
+      const featureLayerUrl = "https://services7.arcgis.com/6o0M9YyJcHjZF5MP/arcgis/rest/services/NYC%20POI/FeatureServer/0";
+      let selectedPoint = null;
+      let bufferGraphics = [];
+
+      // Create map and view
+      const map = new Map({
+	    basemap: "streets-navigation-vector",
+	  });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-73.96, 40.75],
+        zoom: 11
+      });
+
+      // Add FeatureLayer of NYC POI points
+      const poiLayer = new FeatureLayer({
+        url: featureLayerUrl,
+        outFields: ["*"],
+        popupTemplate: new PopupTemplate({
+          title: "{name}",
+          content: [
+            { type: "fields", fieldInfos: [
+              {fieldName: "name", label: "Name"},
+              {fieldName: "type", label: "Type"},
+              {fieldName: "address", label: "Address"},
+              {fieldName: "borough", label: "Borough"}
+            ]}
+          ]
+        }),
+        objectIdField: "OBJECTID",
+        title: "NYC POI"
+      });
+      map.add(poiLayer);
+
+      // Symbol for selected point highlight
+      const selectedPointSymbol = new SimpleMarkerSymbol({
+        style: "circle",
+        color: "#ff7f50",
+        size: 14,
+        outline: {
+          color: "white",
+          width: 2
+        }
+      });
+
+      // Buffer fill symbol (semi-transparent)
+      const bufferFillSymbol = (color) => new SimpleFillSymbol({
+        color: color + "77",
+        outline: { color: color, width: 2 }
+      });
+
+      // UI Elements
+      const chatInput = document.getElementById("chatInput");
+      const sendBtn = document.getElementById("sendBtn");
+      const chatLog = document.getElementById("chatLog");
+      const clearBuffersBtn = document.getElementById("clearBuffersBtn");
+
+      // Show messages in chat
+      function appendMessage(message, sender="bot") {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("chat-message", sender);
+        msgDiv.textContent = message;
+        chatLog.appendChild(msgDiv);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      // Show current selected point info on map view
+      function showSelectedPointInfo() {
+        if (!selectedPoint) {
+          if (view.ui.find("selectedPointInfo")) {
+            view.ui.remove("selectedPointInfo");
+          }
+          return;
+        }
+        let infoDiv = document.getElementById("selectedPointInfo");
+        if (!infoDiv) {
+          infoDiv = document.createElement("div");
+          infoDiv.id = "selectedPointInfo";
+          view.ui.add(infoDiv, "bottom-left");
+        }
+        infoDiv.innerHTML = `<strong>Selected Point:</strong> ID: ${selectedPoint.attributes.OBJECTID}, Name: ${selectedPoint.attributes.name}`;
+      }
+
+      // Clear all buffer graphics
+      function clearBuffers() {
+        bufferGraphics.forEach(g => view.graphics.remove(g));
+        bufferGraphics = [];
+        appendMessage("All buffers cleared.", "bot");
+      }
+      clearBuffersBtn.addEventListener("click", () => {
+        clearBuffers();
+      });
+
+      // Select point on map click
+      view.on("click", function(event) {
+        view.hitTest(event).then(function(response) {
+          let results = response.results.filter(function(result) {
+            return result.graphic.layer === poiLayer;
+          });
+          if (results.length) {
+            selectedPoint = results[0].graphic;
+            showSelectedPointInfo();
+            appendMessage(`Point selected: ID ${selectedPoint.attributes.OBJECTID} - ${selectedPoint.attributes.name}`, "bot");
+          }
+        });
+      });
+
+      // Parse user buffer commands and perform buffer operation
+      function parseAndExecuteCommand(command) {
+        command = command.toLowerCase();
+
+        if (command.includes("clear all buffers") || command.includes("clear buffers")) {
+          clearBuffers();
+          return;
+        }
+
+        if (!selectedPoint) {
+          appendMessage("Please select a point on the map first by clicking a point or referencing its ID (e.g. 'point 123').", "bot");
+          return;
+        }
+
+        // Extract distance(s) and unit
+        // Common units: meters, km, kilometers
+        // Default unit to meters if none detected
+        let distances = [];
+        let unit = "meters";
+        let geodesic = false;
+        let multipleRing = false;
+
+        // Check if geodesic requested
+        if (command.includes("geodesic")) geodesic = true;
+
+        // Check if multiple ring buffer requested
+        if (command.includes("multiple ring") || command.includes("multiple rings")) multipleRing = true;
+
+        // Extract distances values (support comma separated multiple distances)
+        // Match numbers possibly with decimal and unit inside command
+        const distanceMatches = command.match(/(\d+(\.\d+)?)(\s?)(meters|meter|m|kilometers|kilometer|km)?/g);
+        if (distanceMatches && distanceMatches.length) {
+          distances = distanceMatches.map(d => {
+            let num = parseFloat(d);
+            if (d.includes("km") || d.includes("kilometer")) {
+              return num * 1000;
+            } else {
+              return num;
+            }
+          });
+        }
+
+        if (distances.length === 0) {
+          appendMessage("I couldn't find any buffer distance specified. Please mention distance like '500 meters' or '1 km'.", "bot");
+          return;
+        }
+
+        // Use first distance if not multiple ring
+        if (!multipleRing && distances.length > 1) {
+          distances = [distances[0]];
+        }
+
+        // Info for user about what will be done
+        if (multipleRing) {
+          appendMessage(`Creating multiple ring buffers at distances: ${distances.join(", ")} meters (unit is meters). Using ${geodesic ? "geodesic" : "planar"} method.`, "bot");
+        } else {
+          appendMessage(`Creating a ${distances[0]} meter buffer around selected point using ${geodesic ? "geodesic" : "planar"} method.`, "bot");
+        }
+
+        // Remove old buffers
+        clearBuffers();
+
+        // Geometry of selected point
+        const ptGeometry = selectedPoint.geometry;
+
+        // Create buffer(s)
+        if (multipleRing) {
+          distances.forEach((dist, idx) => {
+            const bufferGeo = geodesic ?
+              geometryEngine.geodesicBuffer(ptGeometry, dist, "meters") :
+              geometryEngine.buffer(ptGeometry, dist, "meters");
+
+            const fillColor = ["#ff0000", "#00aaff", "#ffaa00", "#33cc33", "#aa00aa"][idx % 5];
+
+            const bufferGraphic = new Graphic({
+              geometry: bufferGeo,
+              symbol: bufferFillSymbol(fillColor)
+            });
+            bufferGraphics.push(bufferGraphic);
+            view.graphics.add(bufferGraphic);
+          });
+        } else {
+          const bufferGeo = geodesic ?
+            geometryEngine.geodesicBuffer(ptGeometry, distances[0], "meters") :
+            geometryEngine.buffer(ptGeometry, distances[0], "meters");
+
+          const bufferGraphic = new Graphic({
+            geometry: bufferGeo,
+            symbol: bufferFillSymbol("#3399ff")
+          });
+          bufferGraphics.push(bufferGraphic);
+          view.graphics.add(bufferGraphic);
+        }
+      }
+
+      // Handle user sending message
+      function sendMessage() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+        appendMessage(message, "user");
+        chatInput.value = "";
+        setTimeout(() => {
+          parseAndExecuteCommand(message);
+        }, 500);
+      }
+
+      sendBtn.addEventListener("click", sendMessage);
+      chatInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      // Initial greeting
+      appendMessage("Hello! You can select a point on the map and ask me to create buffers around it. Try typing: \"Create a 500 meter planar buffer\".", "bot");
+    });
+  </script>
+</body>
+</html>
+
