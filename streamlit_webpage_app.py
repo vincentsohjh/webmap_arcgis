@@ -1,3 +1,9 @@
+import streamlit as st
+import os
+def load_html(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
     else:
         return "<p>HTML file not found.</p>"
 def main():
