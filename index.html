@@ -16,6 +16,11 @@
 	  font-family: "Avenir Next", Helvetica, Arial, sans-serif;
 	}
 	
+	#viewDiv {
+	  outline: none; /* Prevent outline from appearing */
+	  border: none; /* Remove any border if present */
+	}
+	
 	#searchContainer {
 	  position: absolute;
 	  top: 12px;
@@ -392,6 +397,7 @@
           }
 
           view._clickHandler = view.on("click", event => {
+			event.preventDefault(); // Prevent default behavior that may cause a boundary to appear
             if (!layerView) return;
             view.hitTest(event).then(response => {
               const results = response.results.filter(r => r.graphic.layer === loadedFeatureLayer);
