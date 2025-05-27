@@ -5,110 +5,131 @@
   <title>ArcGIS JS SDK - Multi Feature Layer Service & Feature Data Search</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1,user-scalable=no" />
   <!-- Load ArcGIS API for JavaScript -->
-  <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css" />
-  <script src="https://js.arcgis.com/4.26/"></script>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.32/"></script>
   <style>
     html, body, #viewDiv {
-	  height: 100%; 
-	  margin: 0; 
-	  padding: 0; 
-	  width: 100%;
-	  font-family: "Avenir Next", Helvetica, Arial, sans-serif;
-	}
-	
-	#viewDiv {
-	  outline: none; /* Prevent outline from appearing */
-	  border: none; /* Remove any border if present */
-	}
-	
-	#searchContainer {
-	  position: absolute;
-	  top: 12px;
-	  left: 12px;
-	  z-index: 99;
-	  background: white;
-	  border-radius: 6px;
-	  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-	  padding: 12px 16px;
-	  width: 90%; /* Use percentage for responsiveness */
-	  max-width: 380px; /* Set a max width */
-	}
-
-	.search-block {
-	  margin-bottom: 12px;
-	}
+      height: 100%; 
+      margin: 0; 
+      padding: 0; 
+      width: 100%;
+      font-family: "Avenir Next", Helvetica, Arial, sans-serif;
+    }
 
 
-	label {
-	  display: block;
-	  font-weight: bold;
-	  margin-bottom: 4px;
-	  font-size: 14px;
-	  color: #333;
-	}
+
+    #viewDiv {
+      outline: none; /* Prevent outline from appearing */
+      border: none; /* Remove any border if present */
+    }
 
 
-	input[type="text"] {
-	  width: 100%;
-	  font-size: 16px;
-	  padding: 10px; /* Increased padding for better touch targets */
-	  border: 1px solid #ccc;
-	  border-radius: 4px;
-	  box-sizing: border-box;
-	}
 
-	.suggestions {
-	  margin-top: 4px;
-	  max-height: 250px;
-	  overflow-y: auto;
-	  border: 1px solid #ccc;
-	  border-radius: 4px;
-	  background: #fff;
-	  display: none;
-	  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-	  position: relative;
-	  z-index: 1000;
-	}
-
-	.suggestions div {
-	  padding: 10px; /* Increased padding for better touch targets */
-	  cursor: pointer;
-	}
+    #searchContainer {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 99;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      padding: 12px 16px;
+      width: 90%; /* Use percentage for responsiveness */
+      max-width: 380px; /* Set a max width */
+    }
 
 
-	.suggestions div:hover, .suggestions .selected {
-	  background-color: #0079c1;
-	  color: white;
-	}
+
+    .search-block {
+      margin-bottom: 12px;
+    }
 
 
-	.suggestions div .service-name {
-	  font-size: 0.8em;
-	  font-style: italic;
-	  color: #555;
-	  margin-left: 8px;
-	}
 
-	/* Media Queries for Mobile Responsiveness */
-	@media (max-width: 600px) {
-	  #searchContainer {
-		width: 95%; /* Adjust width for smaller screens */
-		padding: 10px; /* Adjust padding */
-	  }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: #333;
+    }
 
 
-	  label {
-		font-size: 12px; /* Smaller font size for labels */
-	  }
 
-	  input[type="text"] {
-		font-size: 14px; /* Smaller font size for inputs */
-	  }
+    input[type="text"] {
+      width: 100%;
+      font-size: 16px;
+      padding: 10px; /* Increased padding for better touch targets */
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
 
-	  .suggestions div {
-		padding: 8px; /* Adjust padding for suggestions */
-	  }
-	}
+
+
+    .suggestions {
+      margin-top: 4px;
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      display: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      position: relative;
+      z-index: 1000;
+    }
+
+
+
+    .suggestions div {
+      padding: 10px; /* Increased padding for better touch targets */
+      cursor: pointer;
+    }
+
+
+
+    .suggestions div:hover, .suggestions .selected {
+      background-color: #0079c1;
+      color: white;
+    }
+
+
+
+    .suggestions div .service-name {
+      font-size: 0.8em;
+      font-style: italic;
+      color: #555;
+      margin-left: 8px;
+    }
+
+
+
+    /* Media Queries for Mobile Responsiveness */
+    @media (max-width: 600px) {
+      #searchContainer {
+        width: 95%; /* Adjust width for smaller screens */
+        padding: 10px; /* Adjust padding */
+      }
+
+
+
+      label {
+        font-size: 12px; /* Smaller font size for labels */
+      }
+
+
+
+      input[type="text"] {
+        font-size: 14px; /* Smaller font size for inputs */
+      }
+
+
+
+      .suggestions div {
+        padding: 8px; /* Adjust padding for suggestions */
+      }
+    }
   </style>
 </head>
 <body>
@@ -126,6 +147,8 @@
   </div>
   <div id="viewDiv"></div>
 
+
+
   <script>
     require([
       "esri/Map",
@@ -134,31 +157,38 @@
       "esri/geometry/geometryEngine"
     ], function(Map, MapView, FeatureLayer, geometryEngine) {
 
+
+
       // List of Feature Layer Service URLs to search through
       const serviceUrls = [
         "https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer",
         "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer",
-		"https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer",
-		"https://sampleserver6.arcgisonline.com/arcgis/rest/services/Water_Network/FeatureServer",
-		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/arcgis/rest/services/OSM_AS_POIs/FeatureServer",
-		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Buildings/FeatureServer/",
-		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Amenities/FeatureServer/",
-		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Shops/FeatureServer",
-		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Leisure/FeatureServer",
-		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Highways/FeatureServer"
-        // Add more Feature Layer Service URLs here as needed
+        "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer",
+        "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Water_Network/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/arcgis/rest/services/OSM_AS_POIs/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Buildings/FeatureServer/",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Amenities/FeatureServer/",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Shops/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Leisure/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Highways/FeatureServer"
       ];
+
+
 
       let map = new Map({
         basemap: "streets-vector"
       });
 
+
+
       let view = new MapView({
         container: "viewDiv",
         map: map,
         center: [103.8198, 1.3521], // Center on Singapore
-		zoom: 12 // Adjust zoom level as needed
+        zoom: 12 // Adjust zoom level as needed
       });
+
+
 
       // Combined sublayers list
       let layerInfos = [];
@@ -166,21 +196,29 @@
       let layerView = null;
       let highlightHandle = null;
 
+
+
       // Features data for current loaded layer for feature search
       let featureSearchData = [];
       // Suitable field name (string) to display & search by in feature search
       let featureSearchField = null;
+
+
 
       // Elements for service layer search
       const serviceSearchInput = document.getElementById("serviceSearchInput");
       const serviceSuggestions = document.getElementById("serviceSuggestions");
       let serviceSelectedIndex = -1;
 
+
+
       // Elements for feature data search
       const featureSearchBlock = document.getElementById("featureSearchBlock");
       const featureSearchInput = document.getElementById("featureSearchInput");
       const featureSuggestions = document.getElementById("featureSuggestions");
       let featureSelectedIndex = -1;
+
+
 
       // Fetch all service metadata for sublayers
       Promise.all(serviceUrls.map(url =>
@@ -209,13 +247,19 @@
         initServiceSearch();
       });
 
+
+
       function initServiceSearch() {
         serviceSearchInput.addEventListener("input", onServiceInput);
         serviceSearchInput.addEventListener("keydown", onServiceKeyDown);
         document.addEventListener("click", onDocumentClick);
       }
 
+
+
       // --- Service Search ---
+
+
 
       function onServiceInput(e) {
         const input = e.target.value.trim().toLowerCase();
@@ -227,6 +271,8 @@
         const filtered = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
         renderServiceSuggestions(filtered);
       }
+
+
 
       function renderServiceSuggestions(layers) {
         clearServiceSuggestions();
@@ -241,10 +287,13 @@
           div.dataset.serviceUrl = layer.serviceUrl;
           div.textContent = layer.name;
 
+
+
           const serviceSpan = document.createElement("span");
-          //serviceSpan.textContent = ` (${layer.serviceName})`;
           serviceSpan.className = "service-name";
           div.appendChild(serviceSpan);
+
+
 
           div.addEventListener("mousedown", evt => {
             evt.preventDefault(); // Prevent input blur
@@ -254,11 +303,15 @@
             hideServiceSuggestions();
           });
 
+
+
           serviceSuggestions.appendChild(div);
         });
         serviceSelectedIndex = -1;
         showServiceSuggestions();
       }
+
+
 
       function clearServiceSuggestions() {
         while (serviceSuggestions.firstChild) {
@@ -266,17 +319,25 @@
         }
       }
 
+
+
       function showServiceSuggestions() {
         serviceSuggestions.style.display = "block";
       }
+
+
 
       function hideServiceSuggestions() {
         serviceSuggestions.style.display = "none";
       }
 
+
+
       function onServiceKeyDown(e) {
         const items = serviceSuggestions.children;
         if (!items.length) return;
+
+
 
         switch (e.key) {
           case "ArrowDown":
@@ -314,6 +375,8 @@
         }
       }
 
+
+
       function updateServiceSuggestionHighlight() {
         const items = serviceSuggestions.children;
         for (let i = 0; i < items.length; i++) {
@@ -327,6 +390,8 @@
         }
       }
 
+
+
       function selectServiceSuggestion(index) {
         const items = serviceSuggestions.children;
         if (index >= 0 && index < items.length) {
@@ -336,11 +401,17 @@
         }
       }
 
+
+
       // --- Feature Layer Loaded & Feature Search ---
+
+
 
       // Load feature layer and initialize feature search data
       function loadLayer(layerInfo) {
         if (!layerInfo) return;
+
+
 
         if (loadedFeatureLayer) {
           map.remove(loadedFeatureLayer);
@@ -352,8 +423,12 @@
           view.popup.close();
         }
 
+
+
         // Hide feature search while loading new layer
         hideFeatureSearch();
+
+
 
         loadedFeatureLayer = new FeatureLayer({
           url: layerInfo.url,
@@ -376,7 +451,11 @@
           }
         });
 
+
+
         map.add(loadedFeatureLayer);
+
+
 
         view.whenLayerView(loadedFeatureLayer).then(lv => {
           layerView = lv;
@@ -391,19 +470,25 @@
             showFeatureSearch();
           });
 
+
+
           view.popup.close();
           if (highlightHandle) {
             highlightHandle.remove();
             highlightHandle = null;
           }
 
+
+
           // Remove previous click handlers if any
           if (view._clickHandler) {
             view._clickHandler.remove();
           }
 
+
+
           view._clickHandler = view.on("click", event => {
-			event.preventDefault(); // Prevent default behavior that may cause a boundary to appear
+            event.preventDefault(); // Prevent default behavior that may cause a boundary to appear
             if (!layerView) return;
             view.hitTest(event).then(response => {
               const results = response.results.filter(r => r.graphic.layer === loadedFeatureLayer);
@@ -429,36 +514,48 @@
         });
       }
 
+
+
       // Query features from loaded layer for feature search
-      // Limits to max 1000 features for performance
+      // Limits to max 2000 features for performance
       async function queryFeaturesForSearch(featureLayer) {
         featureSearchData = [];
         featureSearchField = null;
 
+
+
         const query = featureLayer.createQuery();
-		
-		// Create a buffer around the current view extent
-		const bufferDistance = 5000; // Set buffer distance in meters (adjust as needed)
-		const bufferedGeometry = geometryEngine.buffer(view.extent, bufferDistance, "meters");
-		
-		query.geometry = bufferedGeometry;
-        query.where = "1=1";
+
+
+
+        // Create a buffer around the current view extent
+        const bufferDistance = 5000; // Set buffer distance in meters (adjust as needed)
+        const bufferedGeometry = geometryEngine.buffer(view.extent, bufferDistance, "meters");
+
+
+
+        query.geometry = bufferedGeometry; // Set the geometry to the buffered area
         query.outFields = ["*"];
         query.returnGeometry = true; // we just want fields initially
         query.orderByFields = []; // no order
-        query.num = 2000; // limit features to 1000 max
+        query.num = 2000; // Increase the limit to 2000 or more as needed
+
+
 
         const results = await featureLayer.queryFeatures(query);
 
+
+
         if (!results.features.length) {
-          return;
+            return;
         }
+
+
 
         featureSearchData = results.features;
 
-        // Determine a field to use for search display
-        // Prefer fields of type 'string', excluding OID, geometry, or length=0
-        // Try "Name" or "NAME" or "name" first, else first string field encountered
+
+        // Validate if "Name" field exists and is of type 'string'
         const fields = featureLayer.fields;
         let preferredField = ["Name", "NAME", "name","name_en"].find(fldName =>
           fields.some(fld => fld.name === fldName && fld.type === "string"));
@@ -472,6 +569,8 @@
         featureSearchField = preferredField;
       }
 
+
+
       // Show/hide feature search input block
       function showFeatureSearch() {
         featureSearchBlock.style.display = "block";
@@ -483,37 +582,54 @@
         clearFeatureSuggestions();
       }
 
+
+
       // --- Feature Search handlers ---
+
+
 
       featureSearchInput.addEventListener("input", onFeatureInput);
       featureSearchInput.addEventListener("keydown", onFeatureKeyDown);
 
-	  function onFeatureInput(e) {
-		const input = e.target.value.trim().toLowerCase();
-		if (!input || featureSearchData.length === 0) {
-			clearFeatureSuggestions();
-			hideFeatureSuggestions();
-			return;
-		}
-			
-		// Define the fields to search across, including the default field
-		const searchFields = [featureSearchField, "addr_city", "addr_country", "addr_postcode", "amenity"]; // Add more fields as needed
-		
-		// Validate that the fields are available in the feature data
-		const validSearchFields = searchFields.filter(field => {
-			return featureSearchData[0].attributes.hasOwnProperty(field); // Check if the field exists in the first feature's attributes
-		});
-		// Filter features by checking if any of the valid specified fields contain the input substring
-		const filtered = featureSearchData.filter(f => {
-			return validSearchFields.some(field => {
-				const val = f.attributes[field];
-				return val && val.toString().toLowerCase().includes(input);
-			});
-		});
-			
-		renderFeatureSuggestions(filtered);
-	  }
-	  
+
+
+      function onFeatureInput(e) {
+        const input = e.target.value.trim().toLowerCase();
+        if (!input || featureSearchData.length === 0) {
+            clearFeatureSuggestions();
+            hideFeatureSuggestions();
+            return;
+        }
+
+
+
+        // Define the fields to search across, including the default field
+        const searchFields = [featureSearchField, "addr_city", "addr_country", "addr_postcode", "amenity"]; // Add more fields as needed
+
+
+
+        // Validate that the fields are available in the feature data
+        const validSearchFields = searchFields.filter(field => {
+            return featureSearchData[0].attributes.hasOwnProperty(field); // Check if the field exists in the first feature's attributes
+        });
+
+
+
+        // Filter features by checking if any of the valid specified fields contain the input substring
+        const filtered = featureSearchData.filter(f => {
+            return validSearchFields.some(field => {
+                const val = f.attributes[field];
+                return val && val.toString().toLowerCase().includes(input);
+            });
+        });
+
+
+
+        renderFeatureSuggestions(filtered);
+      }
+
+
+
       function renderFeatureSuggestions(features) {
         clearFeatureSuggestions();
         if (features.length === 0) {
@@ -524,7 +640,8 @@
           const div = document.createElement("div");
           div.setAttribute("role", "option");
           div.dataset.featureIndex = idx;
-          div.textContent = feature.attributes[featureSearchField] || "(no value)";
+          
+		  div.textContent = feature.attributes[featureSearchField] || "(no value)";
           div.addEventListener("mousedown", evt => {
             evt.preventDefault();
             selectFeatureSuggestion(idx);
@@ -538,11 +655,15 @@
         showFeatureSuggestions();
       }
 
+
+
       function clearFeatureSuggestions() {
         while (featureSuggestions.firstChild) {
           featureSuggestions.firstChild.remove();
         }
       }
+
+
 
       function showFeatureSuggestions() {
         featureSuggestions.style.display = "block";
@@ -551,9 +672,13 @@
         featureSuggestions.style.display = "none";
       }
 
+
+
       function onFeatureKeyDown(e) {
         const items = featureSuggestions.children;
         if (!items.length) return;
+
+
 
         switch (e.key) {
           case "ArrowDown":
@@ -594,6 +719,8 @@
         }
       }
 
+
+
       function updateFeatureSuggestionHighlight() {
         const items = featureSuggestions.children;
         for (let i = 0; i < items.length; i++) {
@@ -607,6 +734,8 @@
         }
       }
 
+
+
       function selectFeatureSuggestion(index) {
         const items = featureSuggestions.children;
         if (index >= 0 && index < items.length) {
@@ -616,9 +745,13 @@
         }
       }
 
+
+
       // Zoom to feature geometry and highlight it, open popup
       function zoomToFeature(feature) {
         if (!feature || !layerView) return;
+
+
 
         // Remove previous highlight and popup
         if (highlightHandle) {
@@ -626,6 +759,8 @@
           highlightHandle = null;
         }
         view.popup.close();
+
+
 
         // Center and zoom on feature geometry
         let geom = feature.geometry;
@@ -638,8 +773,12 @@
           view.goTo(geom);
         }
 
+
+
         // Highlight feature
         highlightHandle = layerView.highlight(feature);
+
+
 
         // Open popup on feature location
         view.popup.open({
@@ -647,6 +786,8 @@
           location: geom.type === "point" ? geom : geom.extent ? geom.extent.center : view.center
         });
       }
+
+
 
       // Close suggestions if click outside inputs or suggestions containers
       document.addEventListener("click", evt => {
@@ -659,9 +800,21 @@
           hideFeatureSuggestions();
         }
       });
+
+
+
+      // Add an event listener for extent changes
+      view.watch("extent", function(newExtent) {
+        // Call the queryFeaturesForSearch function with the updated extent/
+		//console.log(view.extent);
+		
+        queryFeaturesForSearch(loadedFeatureLayer);
+      });
+	  
+	  <!-- view.watch("extent", function(newExtent) { -->
+		<!-- console.log(view.extent) -->
+	  <!-- }); -->
     });
   </script>
 </body>
 </html>
-
-
