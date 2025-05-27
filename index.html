@@ -141,7 +141,8 @@
 		"https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer",
 		"https://sampleserver6.arcgisonline.com/arcgis/rest/services/Water_Network/FeatureServer",
 		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/arcgis/rest/services/OSM_AS_POIs/FeatureServer",
-		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Buildings/FeatureServer"
+		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Buildings/FeatureServer/",
+		"https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Amenities/FeatureServer/"
         // Add more Feature Layer Service URLs here as needed
       ];
 
@@ -238,7 +239,7 @@
           div.textContent = layer.name;
 
           const serviceSpan = document.createElement("span");
-          serviceSpan.textContent = ` (${layer.serviceName})`;
+          //serviceSpan.textContent = ` (${layer.serviceName})`;
           serviceSpan.className = "service-name";
           div.appendChild(serviceSpan);
 
@@ -450,7 +451,7 @@
         // Prefer fields of type 'string', excluding OID, geometry, or length=0
         // Try "Name" or "NAME" or "name" first, else first string field encountered
         const fields = featureLayer.fields;
-        let preferredField = ["Name", "NAME", "name", "route"].find(fldName =>
+        let preferredField = ["Name", "NAME", "name", "route","addr_city","addr_country","addr_postcode","amenity"].find(fldName =>
           fields.some(fld => fld.name === fldName && fld.type === "string"));
         if (!preferredField) {
           // find first string field which is not objectid or geometry
@@ -478,21 +479,27 @@
       featureSearchInput.addEventListener("input", onFeatureInput);
       featureSearchInput.addEventListener("keydown", onFeatureKeyDown);
 
-      function onFeatureInput(e) {
-        const input = e.target.value.trim().toLowerCase();
-        if (!input || featureSearchData.length === 0) {
-          clearFeatureSuggestions();
-          hideFeatureSuggestions();
-          return;
-        }
-        // Filter features by matching featureSearchField containing input substring
-        const filtered = featureSearchData.filter(f => {
-          const val = f.attributes[featureSearchField];
-          return val && val.toString().toLowerCase().includes(input);
-        });
-        renderFeatureSuggestions(filtered);
-      }
-
+	  function onFeatureInput(e) {
+		const input = e.target.value.trim().toLowerCase();
+		if (!input || featureSearchData.length === 0) {
+			clearFeatureSuggestions();
+			hideFeatureSuggestions();
+			return;
+		}
+			
+		// Define the fields to search across
+		const searchFields = ["Name", "addr_city", "addr_country", "addr_postcode", "amenity"]; // Add more fields as needed
+		// Filter features by checking if any of the specified fields contain the input substring
+		const filtered = featureSearchData.filter(f => {
+			return searchFields.some(field => {
+				const val = f.attributes[field];
+				return val && val.toString().toLowerCase().includes(input);
+			});
+		});
+			
+			renderFeatureSuggestions(filtered);
+	  }
+	  
       function renderFeatureSuggestions(features) {
         clearFeatureSuggestions();
         if (features.length === 0) {
