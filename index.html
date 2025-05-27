@@ -640,8 +640,7 @@
           const div = document.createElement("div");
           div.setAttribute("role", "option");
           div.dataset.featureIndex = idx;
-          
-		  div.textContent = feature.attributes[featureSearchField] || "(no value)";
+          div.textContent = feature.attributes[featureSearchField] || "(no value)";
           div.addEventListener("mousedown", evt => {
             evt.preventDefault();
             selectFeatureSuggestion(idx);
