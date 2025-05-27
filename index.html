@@ -156,8 +156,8 @@
       let view = new MapView({
         container: "viewDiv",
         map: map,
-        center: [-98, 39], // USA center
-        zoom: 4
+        center: [103.8198, 1.3521], // Center on Singapore
+		zoom: 12 // Adjust zoom level as needed
       });
 
       // Combined sublayers list
@@ -436,11 +436,17 @@
         featureSearchField = null;
 
         const query = featureLayer.createQuery();
+		
+		// Create a buffer around the current view extent
+		const bufferDistance = 5000; // Set buffer distance in meters (adjust as needed)
+		const bufferedGeometry = geometryEngine.buffer(view.extent, bufferDistance, "meters");
+		
+		query.geometry = bufferedGeometry;
         query.where = "1=1";
         query.outFields = ["*"];
         query.returnGeometry = true; // we just want fields initially
         query.orderByFields = []; // no order
-        query.num = 1000; // limit features to 1000 max
+        query.num = 2000; // limit features to 1000 max
 
         const results = await featureLayer.queryFeatures(query);
 
@@ -454,7 +460,7 @@
         // Prefer fields of type 'string', excluding OID, geometry, or length=0
         // Try "Name" or "NAME" or "name" first, else first string field encountered
         const fields = featureLayer.fields;
-        let preferredField = ["Name", "NAME", "name", "route","addr_city","addr_country","addr_postcode","amenity"].find(fldName =>
+        let preferredField = ["Name", "NAME", "name","name_en"].find(fldName =>
           fields.some(fld => fld.name === fldName && fld.type === "string"));
         if (!preferredField) {
           // find first string field which is not objectid or geometry
@@ -490,17 +496,22 @@
 			return;
 		}
 			
-		// Define the fields to search across
-		const searchFields = ["Name", "addr_city", "addr_country", "addr_postcode", "amenity"]; // Add more fields as needed
-		// Filter features by checking if any of the specified fields contain the input substring
+		// Define the fields to search across, including the default field
+		const searchFields = [featureSearchField, "addr_city", "addr_country", "addr_postcode", "amenity"]; // Add more fields as needed
+		
+		// Validate that the fields are available in the feature data
+		const validSearchFields = searchFields.filter(field => {
+			return featureSearchData[0].attributes.hasOwnProperty(field); // Check if the field exists in the first feature's attributes
+		});
+		// Filter features by checking if any of the valid specified fields contain the input substring
 		const filtered = featureSearchData.filter(f => {
-			return searchFields.some(field => {
+			return validSearchFields.some(field => {
 				const val = f.attributes[field];
 				return val && val.toString().toLowerCase().includes(input);
 			});
 		});
 			
-			renderFeatureSuggestions(filtered);
+		renderFeatureSuggestions(filtered);
 	  }
 	  
       function renderFeatureSuggestions(features) {
