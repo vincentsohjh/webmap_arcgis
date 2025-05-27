@@ -9,64 +9,101 @@
   <script src="https://js.arcgis.com/4.26/"></script>
   <style>
     html, body, #viewDiv {
-      height: 100%; margin: 0; padding: 0; width: 100%;
-      font-family: "Avenir Next", Helvetica, Arial, sans-serif;
-    }
-    #searchContainer {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      z-index: 99;
-      background: white;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      padding: 12px 16px;
-      width: 380px;
-    }
-    .search-block {
-      margin-bottom: 12px;
-    }
-    label {
-      display: block;
-      font-weight: bold;
-      margin-bottom: 4px;
-      font-size: 14px;
-      color: #333;
-    }
-    input[type="text"] {
-      width: 100%;
-      font-size: 16px;
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    .suggestions {
-      margin-top: 4px;
-      max-height: 250px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background: #fff;
-      display: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      position: relative;
-      z-index: 1000;
-    }
-    .suggestions div {
-      padding: 6px 10px;
-      cursor: pointer;
-    }
-    .suggestions div:hover, .suggestions .selected {
-      background-color: #0079c1;
-      color: white;
-    }
-    .suggestions div .service-name {
-      font-size: 0.8em;
-      font-style: italic;
-      color: #555;
-      margin-left: 8px;
-    }
+	  height: 100%; 
+	  margin: 0; 
+	  padding: 0; 
+	  width: 100%;
+	  font-family: "Avenir Next", Helvetica, Arial, sans-serif;
+	}
+	
+	#searchContainer {
+	  position: absolute;
+	  top: 12px;
+	  left: 12px;
+	  z-index: 99;
+	  background: white;
+	  border-radius: 6px;
+	  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+	  padding: 12px 16px;
+	  width: 90%; /* Use percentage for responsiveness */
+	  max-width: 380px; /* Set a max width */
+	}
+
+	.search-block {
+	  margin-bottom: 12px;
+	}
+
+
+	label {
+	  display: block;
+	  font-weight: bold;
+	  margin-bottom: 4px;
+	  font-size: 14px;
+	  color: #333;
+	}
+
+
+	input[type="text"] {
+	  width: 100%;
+	  font-size: 16px;
+	  padding: 10px; /* Increased padding for better touch targets */
+	  border: 1px solid #ccc;
+	  border-radius: 4px;
+	  box-sizing: border-box;
+	}
+
+	.suggestions {
+	  margin-top: 4px;
+	  max-height: 250px;
+	  overflow-y: auto;
+	  border: 1px solid #ccc;
+	  border-radius: 4px;
+	  background: #fff;
+	  display: none;
+	  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+	  position: relative;
+	  z-index: 1000;
+	}
+
+	.suggestions div {
+	  padding: 10px; /* Increased padding for better touch targets */
+	  cursor: pointer;
+	}
+
+
+	.suggestions div:hover, .suggestions .selected {
+	  background-color: #0079c1;
+	  color: white;
+	}
+
+
+	.suggestions div .service-name {
+	  font-size: 0.8em;
+	  font-style: italic;
+	  color: #555;
+	  margin-left: 8px;
+	}
+
+	/* Media Queries for Mobile Responsiveness */
+	@media (max-width: 600px) {
+	  #searchContainer {
+		width: 95%; /* Adjust width for smaller screens */
+		padding: 10px; /* Adjust padding */
+	  }
+
+
+	  label {
+		font-size: 12px; /* Smaller font size for labels */
+	  }
+
+	  input[type="text"] {
+		font-size: 14px; /* Smaller font size for inputs */
+	  }
+
+	  .suggestions div {
+		padding: 8px; /* Adjust padding for suggestions */
+	  }
+	}
   </style>
 </head>
 <body>
