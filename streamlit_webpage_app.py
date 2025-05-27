@@ -1,18 +1,25 @@
 import streamlit as st
 import os
-def load_html(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
-    else:
-        return "<p>HTML file not found.</p>"
+
 def main():
-    st.set_page_config(page_title="Embedded HTML page", page_icon="🌐")
-    st.title("Streamlit HTML Embed Example")
-    # Method 2: Load external HTML file you have (change 'example.html' to your filename)
-    html_file = "arcgis-multi-feature-layer-service-search-with-feature-search.html"  # Make sure this file is in the same directory as this script
-    st.subheader("Embedded External HTML File")
-    html_content = load_html(html_file)
-    st.components.v1.html(html_content)
+    st.set_page_config(page_title="Full HTML Page in Iframe", page_icon="🌐")
+
+    st.title("Full HTML Page Embedded in Streamlit via Iframe")
+
+    st.markdown("""
+    This example shows how to embed a full HTML page in Streamlit using an iframe.
+    Your HTML file needs to be served from a local HTTP server or remotely accessible URL.
+    """)
+
+    # Example: local server URL pointing to your HTML file
+    # You need to run a local HTTP server in the folder containing your HTML file first:
+    # python -m http.server 8000
+    # Then update the url accordingly:
+    url ="arcgis-multi-feature-layer-service-search-with-feature-search.html"  # Make sure this file is in the same directory as this script
+    
+
+    st.markdown(f"<iframe src='{url}' width='100%' height='100%' frameborder='0'></iframe>", unsafe_allow_html=True)
+
 if __name__ == "__main__":
     main()
+
