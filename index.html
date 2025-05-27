@@ -184,7 +184,7 @@
           .then(response => response.json())
           .then(serviceJson => {
             if (serviceJson.error) throw new Error(serviceJson.error.message);
-            const serviceName = serviceJson.serviceDescription || url;
+            const serviceName = serviceJson.serviceDescription;
             return (serviceJson.layers || []).map(layer => ({
               id: layer.id,
               name: layer.name || ("Layer " + layer.id),
