@@ -14,6 +14,7 @@
     }
     #container {
       display: flex;
+      flex-direction: row;
       height: 100vh;
       width: 100vw;
       overflow: hidden;
@@ -120,6 +121,21 @@
     #clearBuffersBtn:hover {
       background-color: #b23636;
     }
+
+    /* Media Queries for Mobile Responsiveness */
+    @media (max-width: 768px) {
+      #container {
+        flex-direction: column;
+      }
+      #viewDiv {
+        height: 50vh; /* Adjust height for mobile */
+      }
+      #chatContainer {
+        height: 50vh; /* Adjust height for mobile */
+        border-left: none; /* Remove border on mobile */
+        border-top: 2px solid #ddd; /* Add top border */
+      }
+    }
   </style>
   <script src="https://js.arcgis.com/4.32/"></script>
 </head>
@@ -165,8 +181,8 @@
 
       // Create map and view
       const map = new Map({
-	    basemap: "streets-navigation-vector",
-	  });
+        basemap: "streets-navigation-vector",
+      });
       const view = new MapView({
         container: "viewDiv",
         map: map,
@@ -387,4 +403,3 @@
   </script>
 </body>
 </html>
-
