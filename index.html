@@ -16,14 +16,10 @@
       font-family: "Avenir Next", Helvetica, Arial, sans-serif;
     }
 
-
-
     #viewDiv {
       outline: none; /* Prevent outline from appearing */
       border: none; /* Remove any border if present */
     }
-
-
 
     #searchContainer {
       position: absolute;
@@ -36,9 +32,13 @@
       padding: 12px 16px;
       width: 90%; /* Use percentage for responsiveness */
       max-width: 380px; /* Set a max width */
+      display: flex; /* Use flexbox to align items */
+      align-items: flex-start; /* Align items to the start of the cross axis */
     }
 
-
+    .search-controls {
+      flex-grow: 1; /* Allow search controls to take available space */
+    }
 
     .search-block {
       margin-bottom: 12px;
@@ -130,22 +130,143 @@
         padding: 8px; /* Adjust padding for suggestions */
       }
     }
+
+    #measurementDiv {
+      position: absolute;
+      top: 12px; /* Adjust as needed */
+      right: 12px; /* Adjust as needed */
+      width: 300px; /* Adjust as needed */
+      background-color: white;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      z-index: 98; /* Ensure it's above the map but below other elements if necessary */
+      display: none; /* Initially hidden */
+    }
+
+    #measurementButton {
+      position: absolute;
+      top: 12px; /* Adjust to position near the measurementDiv or searchContainer */
+      right: 320px; /* Adjust to position left of measurementDiv */
+      z-index: 100; /* Ensure it's above other elements */
+      padding: 8px 12px;
+      background-color: #0079c1;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    #measurementButton:hover {
+      background-color: #005a8e;
+    }
+
+    #layerListToggleBtn {
+      background-color: #f8f8f8;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 18px;
+      margin-right: 8px; /* Space between button and search inputs */
+      align-self: center; /* Align button vertically with search inputs */
+    }
+
+    #layerListToggleBtn:hover {
+      background-color: #e0e0e0;
+    }
+
+    #layerListDropdown {
+      display: none; /* Initially hidden */
+      position: absolute;
+      top: 100%; /* Position below the searchContainer or toggle button */
+      left: 0;
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      z-index: 1001; /* Above suggestions */
+      max-height: 300px;
+      overflow-y: auto;
+      min-width: 250px; /* Or width of searchContainer */
+    }
+
+    .layer-dropdown-item {
+      padding: 10px 15px;
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .layer-dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .layer-dropdown-item:hover {
+      background-color: #f0f0f0;
+    }
+
+    #basemapControlsDiv {
+      position: absolute;
+      top: 120px; /* Adjust this based on searchContainer's height or desired position */
+      left: 12px;
+      z-index: 98; /* Below searchContainer if it overlaps, adjust as needed */
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      padding: 10px 15px;
+      width: auto; /* Or set a specific width */
+      max-width: 380px; /* Consistent with searchContainer */
+    }
+
+    #basemapControlsDiv label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    #basemapSelect {
+      width: 100%;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
   <div id="searchContainer">
-    <div class="search-block" id="serviceSearchBlock">
-      <label for="serviceSearchInput">Search layers across services</label>
-      <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
-      <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
+    <button id="layerListToggleBtn">&#9776;</button> <!-- Hamburger Icon -->
+    <div class="search-controls">
+      <div class="search-block" id="serviceSearchBlock">
+        <label for="serviceSearchInput">Search layers across services</label>
+        <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
+        <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
+      </div>
+      <div class="search-block" id="featureSearchBlock" style="display:none;">
+        <label for="featureSearchInput">Search features in loaded layer</label>
+        <input type="text" id="featureSearchInput" placeholder="Search features in layer..." autocomplete="off" aria-label="Search features in layer" />
+        <div id="featureSuggestions" class="suggestions" role="listbox"></div>
+      </div>
     </div>
-    <div class="search-block" id="featureSearchBlock" style="display:none;">
-      <label for="featureSearchInput">Search features in loaded layer</label>
-      <input type="text" id="featureSearchInput" placeholder="Search features in layer..." autocomplete="off" aria-label="Search features in layer" />
-      <div id="featureSuggestions" class="suggestions" role="listbox"></div>
-    </div>
+    <div id="layerListDropdown" style="display:none;"></div> <!-- Dropdown Menu -->
+  </div>
+  <div id="basemapControlsDiv">
+    <label for="basemapSelect">Select Basemap:</label>
+    <select id="basemapSelect">
+      <option value="streets-vector" selected>Streets</option>
+      <option value="satellite">Satellite</option>
+      <option value="hybrid">Hybrid</option>
+      <option value="topo-vector">Topographic</option>
+      <option value="gray-vector">Gray</option>
+      <option value="osm">OpenStreetMap</option>
+    </select>
   </div>
   <div id="viewDiv"></div>
+  <button id="measurementButton">Toggle Measurement</button>
+  <div id="measurementDiv"></div>
 
 
 
@@ -154,8 +275,9 @@
       "esri/Map",
       "esri/views/MapView",
       "esri/layers/FeatureLayer",
-      "esri/geometry/geometryEngine"
-    ], function(Map, MapView, FeatureLayer, geometryEngine) {
+      "esri/geometry/geometryEngine",
+      "esri/widgets/Measurement"
+    ], function(Map, MapView, FeatureLayer, geometryEngine, Measurement) {
 
 
 
@@ -176,7 +298,7 @@
 
 
       let map = new Map({
-        basemap: "streets-vector"
+        basemap: "streets-vector" // Default basemap
       });
 
 
@@ -243,19 +365,44 @@
         layerInfos = results.flat();
         if (layerInfos.length === 0) {
           alert("No feature layers found in the specified services.");
+        } else {
+          populateLayerDropdown(); // Populate dropdown once layerInfos is ready
         }
         initServiceSearch();
+        initLayerDropdownControls(); // Initialize dropdown controls
       });
 
+      // --- Layer Dropdown Menu ---
+      const layerListToggleBtn = document.getElementById("layerListToggleBtn");
+      const layerListDropdown = document.getElementById("layerListDropdown");
 
+      function populateLayerDropdown() {
+        layerInfos.forEach(layerInfo => {
+          const item = document.createElement("div");
+          item.textContent = layerInfo.name;
+          item.classList.add("layer-dropdown-item");
+          item.addEventListener("click", () => {
+            loadLayer(layerInfo);
+            layerListDropdown.style.display = "none"; // Hide dropdown after selection
+          });
+          layerListDropdown.appendChild(item);
+        });
+      }
+
+      function initLayerDropdownControls() {
+        layerListToggleBtn.addEventListener("click", (event)_=> {
+          event.stopPropagation(); // Prevent this click from being handled by the document click listener
+          const isHidden = layerListDropdown.style.display === "none" || layerListDropdown.style.display === "";
+          layerListDropdown.style.display = isHidden ? "block" : "none";
+        });
+        // The logic for closing the dropdown when clicking outside is now consolidated in onDocumentClick
+      }
 
       function initServiceSearch() {
         serviceSearchInput.addEventListener("input", onServiceInput);
         serviceSearchInput.addEventListener("keydown", onServiceKeyDown);
-        document.addEventListener("click", onDocumentClick);
+        // The document click listener is set up once globally after onDocumentClick is defined.
       }
-
-
 
       // --- Service Search ---
 
@@ -788,19 +935,51 @@
 
 
 
-      // Close suggestions if click outside inputs or suggestions containers
-      document.addEventListener("click", evt => {
-        if (!serviceSearchInput.contains(evt.target) && !serviceSuggestions.contains(evt.target)) {
+      // Close suggestions AND layer dropdown if click outside relevant elements
+      function onDocumentClick(evt) {
+        // Close service suggestions
+        if (serviceSuggestions.style.display === "block" && !serviceSearchInput.contains(evt.target) && !serviceSuggestions.contains(evt.target)) {
           clearServiceSuggestions();
           hideServiceSuggestions();
         }
-        if (!featureSearchInput.contains(evt.target) && !featureSuggestions.contains(evt.target)) {
+        // Close feature suggestions
+        if (featureSuggestions.style.display === "block" && !featureSearchInput.contains(evt.target) && !featureSuggestions.contains(evt.target)) {
           clearFeatureSuggestions();
           hideFeatureSuggestions();
         }
+        // Close layer dropdown
+        if (layerListDropdown.style.display === "block" && !layerListDropdown.contains(evt.target) && !layerListToggleBtn.contains(evt.target)) {
+          layerListDropdown.style.display = "none";
+        }
+      }
+      document.addEventListener("click", onDocumentClick);
+
+      // Basemap Change Functionality
+      const basemapSelect = document.getElementById("basemapSelect");
+      basemapSelect.addEventListener("change", ()_=> {
+        map.basemap = basemapSelect.value;
       });
 
+      // Measurement Widget
+      const measurement = new Measurement({
+        view: view,
+        container: "measurementDiv"
+      });
 
+      // Initially hide the measurement widget
+      document.getElementById("measurementDiv").style.display = "none";
+
+      // Toggle Measurement Widget
+      document.getElementById("measurementButton").addEventListener("click", () => {
+        const measurementDiv = document.getElementById("measurementDiv");
+        if (measurementDiv.style.display === "none") {
+          measurementDiv.style.display = "block";
+          // measurement.activeTool = "distance"; // Optionally activate a tool
+        } else {
+          measurementDiv.style.display = "none";
+          // measurement.clear(); // Optionally clear measurements when hiding
+        }
+      });
 
       // Add an event listener for extent changes
       view.watch("extent", function(newExtent) {
