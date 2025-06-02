@@ -36,12 +36,16 @@
       padding: 12px 16px;
       width: 90%; /* Use percentage for responsiveness */
       max-width: 380px; /* Set a max width */
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
 
 
     .search-block {
-      margin-bottom: 12px;
+      margin-bottom: 0;
+      flex-grow: 1;
     }
 
 
@@ -134,10 +138,22 @@
 </head>
 <body>
   <div id="searchContainer">
-    <div class="search-block" id="serviceSearchBlock">
-      <label for="serviceSearchInput">Search layers across services</label>
-      <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
-      <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
+    <div id="searchTopRow" style="display:flex; align-items:center; gap:8px;">
+      <button id="hamburgerMenu" aria-label="Toggle feature datasets menu" title="Feature Datasets Menu" style="background:none; border:none; cursor:pointer; padding:0; margin-right:8px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="search-block" id="serviceSearchBlock" style="flex-grow: 1;">
+        <label for="serviceSearchInput" style="display:none;">Search layers across services</label>
+        <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
+        <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
+      </div>
+    </div>
+    <div id="featureDatasetsMenu" class="feature-datasets-menu" style="display:none; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin-bottom: 8px; padding: 4px 0; z-index: 1001; position: relative;">
+      <!-- Feature datasets will be populated here -->
     </div>
     <div class="search-block" id="featureSearchBlock" style="display:none;">
       <label for="featureSearchInput">Search features in loaded layer</label>
@@ -146,6 +162,8 @@
     </div>
   </div>
   <div id="viewDiv"></div>
+  <div id="measurementDiv" style="position:absolute; top:12px; right:12px; z-index: 100; background:white; padding:8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+  <div id="scaleBarDiv" style="position:absolute; bottom:12px; left:12px; z-index: 100; background:white; padding:4px 8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
 
 
 
@@ -154,8 +172,10 @@
       "esri/Map",
       "esri/views/MapView",
       "esri/layers/FeatureLayer",
-      "esri/geometry/geometryEngine"
-    ], function(Map, MapView, FeatureLayer, geometryEngine) {
+      "esri/geometry/geometryEngine",
+      "esri/widgets/Measurement",
+      "esri/widgets/ScaleBar"
+    ], function(Map, MapView, FeatureLayer, geometryEngine, Measurement, ScaleBar) {
 
 
 
@@ -171,7 +191,94 @@
         "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Shops/FeatureServer",
         "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Leisure/FeatureServer",
         "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Highways/FeatureServer"
-      ];
+    ];
+
+    // New code for hamburger menu functionality
+    const hamburgerMenu = document.getElementById("hamburgerMenu");
+    const featureDatasetsMenu = document.getElementById("featureDatasetsMenu");
+
+    // Populate the feature datasets menu with layerInfos
+    function populateFeatureDatasetsMenu() {
+      featureDatasetsMenu.innerHTML = "";
+      if (!layerInfos || layerInfos.length === 0) {
+        const noDataDiv = document.createElement("div");
+        noDataDiv.textContent = "No feature datasets available";
+        noDataDiv.style.padding = "8px 12px";
+        featureDatasetsMenu.appendChild(noDataDiv);
+        return;
+      }
+      layerInfos.forEach((layer, index) => {
+        const itemDiv = document.createElement("div");
+        itemDiv.textContent = layer.name;
+        itemDiv.title = layer.name + " (" + layer.serviceName + ")";
+        itemDiv.tabIndex = 0;
+        itemDiv.style.outline = "none";
+        itemDiv.addEventListener("click", () => {
+          loadLayer(layer);
+          serviceSearchInput.value = layer.name || "";
+          featureDatasetsMenu.style.display = "none";
+        });
+        itemDiv.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            loadLayer(layer);
+            serviceSearchInput.value = layer.name || "";
+            featureDatasetsMenu.style.display = "none";
+          }
+        });
+        featureDatasetsMenu.appendChild(itemDiv);
+      });
+    }
+
+    // Toggle menu visibility on hamburger click
+    hamburgerMenu.addEventListener("click", () => {
+      if (featureDatasetsMenu.style.display === "block") {
+        featureDatasetsMenu.style.display = "none";
+      } else {
+        populateFeatureDatasetsMenu();
+        featureDatasetsMenu.style.display = "block";
+        // When menu opens, also filter based on current input value
+        const inputVal = serviceSearchInput.value.trim().toLowerCase();
+        if (inputVal.length > 0) {
+          filterFeatureDatasetsMenu(inputVal);
+        }
+      }
+    });
+
+    // Close menu if clicking outside, but not if clicking inside search input or hamburger
+    document.addEventListener("click", (event) => {
+      if (!hamburgerMenu.contains(event.target) && !featureDatasetsMenu.contains(event.target) && !serviceSearchInput.contains(event.target)) {
+        featureDatasetsMenu.style.display = "none";
+      }
+    });
+
+    // Filter feature datasets menu items based on input string
+    function filterFeatureDatasetsMenu(filterText) {
+      const items = featureDatasetsMenu.children;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const text = item.textContent.toLowerCase();
+        if (text.includes(filterText)) {
+          item.style.display = "";
+        } else {
+          item.style.display = "none";
+        }
+      }
+    }
+
+    // Filter feature datasets menu items based on input string
+    function filterFeatureDatasetsMenu(filterText) {
+      const items = featureDatasetsMenu.children;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const text = item.textContent.toLowerCase();
+        if (text.includes(filterText)) {
+          item.style.display = "";
+        } else {
+          item.style.display = "none";
+        }
+      }
+    }
 
 
 
@@ -188,8 +295,20 @@
         zoom: 12 // Adjust zoom level as needed
       });
 
+      // Add Measurement widget (ruler)
+      const measurement = new Measurement({
+        view: view,
+        container: "measurementDiv"
+      });
 
-
+      // Add ScaleBar widget
+      const scaleBar = new ScaleBar({
+        view: view,
+        container: "scaleBarDiv",
+        unit: "metric" // or "dual" for metric and imperial
+      });
+      
+      
       // Combined sublayers list
       let layerInfos = [];
       let loadedFeatureLayer = null;
@@ -261,16 +380,28 @@
 
 
 
-      function onServiceInput(e) {
-        const input = e.target.value.trim().toLowerCase();
-        if (input.length === 0) {
-          clearServiceSuggestions();
-          hideServiceSuggestions();
-          return;
+    function onServiceInput(e) {
+      const input = e.target.value.trim().toLowerCase();
+      if (input.length === 0) {
+        clearServiceSuggestions();
+        hideServiceSuggestions();
+        // Also reset feature datasets menu to full list if open
+        if (featureDatasetsMenu.style.display === "block") {
+          populateFeatureDatasetsMenu();
         }
+        return;
+      }
+      if (featureDatasetsMenu.style.display === "block") {
+        // When menu is open, only filter the menu items and hide service suggestions
+        filterFeatureDatasetsMenu(input);
+        clearServiceSuggestions();
+        hideServiceSuggestions();
+      } else {
+        // When menu is closed, show service suggestions as search results
         const filtered = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
         renderServiceSuggestions(filtered);
       }
+    }
 
 
 
@@ -472,7 +603,9 @@
 
 
 
-          view.popup.close();
+          if (view.popup && typeof view.popup.close === "function") {
+            view.popup.close();
+          }
           if (highlightHandle) {
             highlightHandle.remove();
             highlightHandle = null;
@@ -644,6 +777,7 @@
           div.addEventListener("mousedown", evt => {
             evt.preventDefault();
             selectFeatureSuggestion(idx);
+            featureSearchInput.value = feature.attributes[featureSearchField] || "";
             zoomToFeature(feature);
             clearFeatureSuggestions();
             hideFeatureSuggestions();
@@ -698,6 +832,9 @@
             e.preventDefault();
             if (featureSelectedIndex >= 0 && featureSelectedIndex < items.length) {
               items[featureSelectedIndex].dispatchEvent(new Event("mousedown"));
+              featureSearchInput.value = items[featureSelectedIndex].textContent || "";
+              clearFeatureSuggestions();
+              hideFeatureSuggestions();
             } else {
               const inputVal = featureSearchInput.value.trim().toLowerCase();
               const matchFeature = featureSearchData.find(f => {
@@ -757,7 +894,9 @@
           highlightHandle.remove();
           highlightHandle = null;
         }
-        view.popup.close();
+        if (view.popup && typeof view.popup.close === "function") {
+          view.popup.close();
+        }
 
 
 
@@ -810,9 +949,9 @@
         queryFeaturesForSearch(loadedFeatureLayer);
       });
 	  
-	  <!-- view.watch("extent", function(newExtent) { -->
-		<!-- console.log(view.extent) -->
-	  <!-- }); -->
+	  // view.watch("extent", function(newExtent) {
+		// console.log(view.extent)
+	  // });
     });
   </script>
 </body>
