@@ -114,24 +114,54 @@
       #searchContainer {
         width: 95%; /* Adjust width for smaller screens */
         padding: 10px; /* Adjust padding */
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       }
 
+      #featureDatasetsMenu {
+        max-height: 150px;
+        font-size: 14px;
+        padding: 6px 8px;
+      }
 
+      #measurementDiv, #scaleBarDiv {
+        position: fixed;
+        top: auto;
+        bottom: 12px;
+        right: 12px;
+        left: auto;
+        z-index: 100;
+        background: white;
+        padding: 8px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+
+      #scaleBarDiv {
+        bottom: 60px;
+        left: 12px;
+        right: auto;
+      }
 
       label {
         font-size: 12px; /* Smaller font size for labels */
       }
 
-
-
       input[type="text"] {
         font-size: 14px; /* Smaller font size for inputs */
+        padding: 12px; /* Larger padding for touch targets */
       }
 
-
-
       .suggestions div {
-        padding: 8px; /* Adjust padding for suggestions */
+        padding: 12px; /* Larger padding for suggestions */
+      }
+
+      #hamburgerMenu svg {
+        width: 28px;
+        height: 28px;
+        stroke-width: 3;
       }
     }
   </style>
@@ -162,7 +192,7 @@
     </div>
   </div>
   <div id="viewDiv"></div>
-  <div id="measurementDiv" style="position:absolute; top:12px; right:12px; z-index: 100; background:white; padding:8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+  <!-- <div id="measurementDiv" style="position:absolute; top:12px; right:12px; z-index: 100; background:white; padding:8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div> -->
   <div id="scaleBarDiv" style="position:absolute; bottom:12px; left:12px; z-index: 100; background:white; padding:4px 8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
 
 
