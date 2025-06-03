@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArcGIS Web Scene in Singapore</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.24/esri/css/main.css">
+    <style>
+        html, body, #viewDiv {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+    <script src="https://js.arcgis.com/4.24/"></script>
+    <script>
+        require([
+            "esri/WebScene",
+            "esri/views/SceneView"
+        ], function(WebScene, SceneView) {
+            
+            // Create a WebScene instance
+            const webScene = new WebScene({
+                portalItem: { // autocasts as new PortalItem()
+                    id: "037cceb0e24440179dbd00846d2a8c4f" // Your web scene ID
+                }
+            });
+
+            // Create a SceneView instance
+            const view = new SceneView({
+                container: "viewDiv", // Reference to the DOM node that will contain the view
+                map: webScene,
+                camera: {
+                    position: {
+                        x: 103.8198, // Longitude
+                        y: 1.3521,   // Latitude
+                        z: 5000      // Camera height in meters
+                    },
+                    tilt: 45, // Tilt angle
+                    heading: 0 // Heading angle
+                }
+            });
+
+            // Set the lighting to always be in the daytime
+            view.when(function() {
+                view.environment.lighting = {
+                    date: new Date('2023-10-01T12:00:00+08:00'), // Set to noon in Singapore time
+                    directShadowsEnabled: true,
+                    ambientOcclusionEnabled: true,
+                    illumination: "day", // Set to day
+                    sun: {
+                        azimuth: 180, // Sun's azimuth angle (degrees)
+                        altitude: 45   // Sun's altitude angle (degrees)
+                    }
+                };
+            });
+        });
+    </script>
+</head>
+<body>
+    <div id="viewDiv"></div>
+</body>
+</html>
