@@ -385,7 +385,23 @@
         container: "scaleBarDiv",
         unit: "metric" // or "dual" for metric and imperial
       });
-      
+
+      // Create a div to display current center location and zoom level
+      const locationInfoDiv = document.createElement("div");
+      locationInfoDiv.style.position = "absolute";
+      locationInfoDiv.style.bottom = "12px";
+      locationInfoDiv.style.right = "12px";
+      locationInfoDiv.style.zIndex = "101";
+      locationInfoDiv.style.backgroundColor = "rgba(255, 255, 255, 0.8)";
+      locationInfoDiv.style.padding = "6px 10px";
+      locationInfoDiv.style.borderRadius = "6px";
+      locationInfoDiv.style.fontSize = "14px";
+      locationInfoDiv.style.fontFamily = "Arial, sans-serif";
+      locationInfoDiv.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+      locationInfoDiv.style.userSelect = "none";
+      locationInfoDiv.textContent = "Loading location...";
+      view.container.appendChild(locationInfoDiv);
+
       
       // Combined sublayers list
       let layerInfos = [];
@@ -736,7 +752,7 @@
         const query = featureLayer.createQuery();
 
         // Reduced buffer distance for better performance
-        const bufferDistance = 300; // Set buffer distance in meters (adjust as needed)
+        const bufferDistance = 50; // Set buffer distance in meters (adjust as needed)
         const bufferedGeometry = geometryEngine.buffer(view.extent, bufferDistance, "meters");
 
         query.geometry = bufferedGeometry; // Set the geometry to the buffered area
@@ -969,7 +985,7 @@
         // Center and zoom on feature geometry
         let geom = feature.geometry;
         if (geom.type === "point") {
-          view.goTo({target: geom, zoom: Math.max(view.zoom, 17)}); // Increased zoom level from 14 to 17
+          view.goTo({target: geom, zoom: Math.max(view.zoom, 18)}); // Increased zoom level from 14 to 17
         } else if (geom.extent) {
           // zoom to extent with padding
           view.goTo(geom.extent.expand(1.5));
@@ -1018,7 +1034,28 @@
       view.watch("extent", function(newExtent) {
         debouncedQueryFeaturesForSearch();
       });
-	  
+
+      // Function to update location info display
+      function updateLocationInfo() {
+        const center = view.center;
+        const zoom = view.zoom;
+        if (center && zoom !== undefined) {
+          const lat = center.latitude.toFixed(6);
+          const lon = center.longitude.toFixed(6);
+          locationInfoDiv.textContent = `Center: [${lat}, ${lon}] | Zoom: ${zoom.toFixed(2)}`;
+          console.log(`Map center: [${lat}, ${lon}], Zoom level: ${zoom.toFixed(2)}`);
+        }
+      }
+
+      // Watch for changes in center and zoom to update location info
+      view.watch("center", updateLocationInfo);
+      view.watch("zoom", updateLocationInfo);
+
+      // Initial update
+      view.when(() => {
+        updateLocationInfo();
+      });
+
 	  // view.watch("extent", function(newExtent) {
 		// console.log(view.extent)
 	  // });
