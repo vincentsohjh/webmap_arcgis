@@ -349,8 +349,8 @@
       view.when(function() {
         view.environment.lighting = {
             date: new Date('2023-10-01T12:00:00+08:00'), // Set to noon in Singapore time
-            directShadowsEnabled: true,
-            ambientOcclusionEnabled: true,
+            directShadowsEnabled: false, // Disabled shadows for performance
+            ambientOcclusionEnabled: false, // Disabled ambient occlusion for performance
             illumination: "day", // Set to day
             sun: {
                 azimuth: 180, // Sun's azimuth angle (degrees)
@@ -359,10 +359,24 @@
         };
       });
 
-      // Add Measurement widget (ruler)
-      const measurement = new Measurement({
-        view: view,
-        container: "measurementDiv"
+      // Debounce function to limit frequency of calls
+      function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+      }
+
+      // Lazy load Measurement widget after view is ready
+      let measurement;
+      view.when(() => {
+        setTimeout(() => {
+          measurement = new Measurement({
+            view: view,
+            container: "measurementDiv"
+          });
+        }, 2000); // Delay 2 seconds to reduce initial load
       });
 
       // Add ScaleBar widget
@@ -719,35 +733,23 @@
         featureSearchData = [];
         featureSearchField = null;
 
-
-
         const query = featureLayer.createQuery();
 
-
-
-        // Create a buffer around the current view extent
-        const bufferDistance = 500; // Set buffer distance in meters (adjust as needed)
+        // Reduced buffer distance for better performance
+        const bufferDistance = 300; // Set buffer distance in meters (adjust as needed)
         const bufferedGeometry = geometryEngine.buffer(view.extent, bufferDistance, "meters");
-
-
 
         query.geometry = bufferedGeometry; // Set the geometry to the buffered area
         query.outFields = ["*"];
         query.returnGeometry = true; // we just want fields initially
         query.orderByFields = []; // no order
-        query.num = 2000; // Increase the limit to 2000 or more as needed
-
-
+        query.num = 1000; // Reduced number of features to query
 
         const results = await featureLayer.queryFeatures(query);
-
-
 
         if (!results.features.length) {
             return;
         }
-
-
 
         featureSearchData = results.features;
 
@@ -1005,12 +1007,16 @@
 
 
 
+      // Debounced queryFeaturesForSearch to reduce frequency on extent changes
+      const debouncedQueryFeaturesForSearch = debounce(() => {
+        if (loadedFeatureLayer) {
+          queryFeaturesForSearch(loadedFeatureLayer);
+        }
+      }, 500);
+
       // Add an event listener for extent changes
       view.watch("extent", function(newExtent) {
-        // Call the queryFeaturesForSearch function with the updated extent/
-		//console.log(view.extent);
-		
-        queryFeaturesForSearch(loadedFeatureLayer);
+        debouncedQueryFeaturesForSearch();
       });
 	  
 	  // view.watch("extent", function(newExtent) {
