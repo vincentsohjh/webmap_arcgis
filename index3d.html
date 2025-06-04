@@ -204,11 +204,12 @@
       "esri/views/MapView",
       "esri/views/SceneView",
       "esri/layers/FeatureLayer",
+      "esri/layers/SceneLayer",
       "esri/geometry/geometryEngine",
       "esri/widgets/Measurement",
       "esri/widgets/ScaleBar",
       "esri/time/TimeExtent"
-    ], function(Map, WebScene, MapView, SceneView, FeatureLayer, geometryEngine, Measurement, ScaleBar, TimeExtent) {
+    ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, geometryEngine, Measurement, ScaleBar, TimeExtent) {
 
 
 
@@ -314,13 +315,24 @@
     }
 
       
+      // const scene = new WebScene({
+      //   portalItem: { // autocasts as new PortalItem()
+      //     id: "037cceb0e24440179dbd00846d2a8c4f"  // ID of the WebScene on the on-premise portal
+      //   }
+      // });
+
+      // Create a WebScene with a basemap
       const scene = new WebScene({
-        portalItem: { // autocasts as new PortalItem()
-          id: "037cceb0e24440179dbd00846d2a8c4f"  // ID of the WebScene on the on-premise portal
-        }
+        basemap: "streets", // Add a basemap for context
+        ground: "world-elevation" // Add elevation for 3D terrain
       });
 
+      const layer = new SceneLayer({
+        // URL to the service
+        url: "https://basemaps3d.arcgis.com/arcgis/rest/services/Esri3D_Buildings_v1/SceneServer/layers/0"
+      });
 
+      scene.add(layer)
       // Removed unused map variable
       // let map = new Map({
       //   basemap: "streets-vector"

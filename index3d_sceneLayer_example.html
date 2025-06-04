@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ArcGIS JS API - SceneLayer with Basemap Example</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1,user-scalable=no" />
+  <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.32/"></script>
+  <style>
+    html, body, #viewDiv {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      font-family: "Avenir Next", Helvetica, Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+  <script>
+    require([
+      "esri/WebScene",
+      "esri/views/SceneView",
+      "esri/layers/SceneLayer"
+    ], function(WebScene, SceneView, SceneLayer) {
+
+      // Create a WebScene with a basemap
+      const scene = new WebScene({
+        basemap: "streets", // Add a basemap for context
+        ground: "world-elevation" // Add elevation for 3D terrain
+      });
+
+      // Create a SceneLayer with the 3D buildings service URL
+      const sceneLayer = new SceneLayer({
+        url: "https://basemaps3d.arcgis.com/arcgis/rest/services/Esri3D_Buildings_v1/SceneServer/layers/0"
+      });
+
+      // Add the SceneLayer to the WebScene
+      scene.add(sceneLayer);
+
+      // Create the SceneView to display the WebScene
+      const view = new SceneView({
+        container: "viewDiv",
+        map: scene,
+        camera: {
+          position: {
+            x: 103.8198, // Longitude (Singapore)
+            y: 1.3521,   // Latitude
+            z: 5000      // Height in meters
+          },
+          tilt: 45,
+          heading: 0
+        }
+      });
+
+      view.when(() => {
+        console.log("SceneView and SceneLayer loaded successfully");
+      });
+
+    });
+  </script>
+</body>
+</html>
