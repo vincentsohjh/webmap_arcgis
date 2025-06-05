@@ -1,4 +1,4 @@
-in<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -211,8 +211,10 @@ in<!DOCTYPE html>
       "esri/widgets/ScaleBar",
       "esri/time/TimeExtent",
       "esri/Graphic",
-      "esri/geometry/Point"
-    ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point) {
+      "esri/geometry/Point",
+      "esri/symbols/PointSymbol3D",
+      "esri/symbols/ObjectSymbol3DLayer"
+      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer) {
 
 
 
@@ -393,15 +395,18 @@ in<!DOCTYPE html>
                 latitude: userLocation.latitude
               });
 
-              // Create a picture marker symbol (map marker)
-              const markerSymbol = {
-                type: "picture-marker",
-                url: "https://static.arcgis.com/images/Symbols/Shapes/BluePin1LargeB.png",
-                width: "32px",
-                height: "32px",
-                // Optional: add an anchor point if needed
-                // yoffset: 12
-              };
+              // Create a 3D point symbol (vertical cylinder) to stand out above buildings
+              const markerSymbol = new PointSymbol3D({
+                symbolLayers: [
+                  new ObjectSymbol3DLayer({
+                    resource: { primitive: "cylinder" },
+                    material: { color: "orange" },
+                    height: 50,
+                    width: 20,
+                    depth: 20
+                  })
+                ]
+              });
 
               // Create a graphic and add it to the view
               const userGraphic = new Graphic({
