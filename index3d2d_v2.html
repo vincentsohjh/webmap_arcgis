@@ -167,6 +167,46 @@
   </style>
 </head>
 <body>
+  <style>
+    /* Loading overlay styles */
+    #loadingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(255, 255, 255, 0.8);
+      z-index: 2000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      font-family: Arial, sans-serif;
+      color: #333;
+    }
+
+    /* Spinner animation */
+    .spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #0079c1;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div>Loading map, please wait...</div>
+  </div>
+
   <div id="searchContainer">
       <div id="searchTopRow" style="display:flex; align-items:center; gap:8px;">
         <button id="hamburgerMenu" aria-label="Toggle feature datasets menu" title="Feature Datasets Menu" style="background:none; border:none; cursor:pointer; padding:0; margin-right:8px;">
@@ -395,14 +435,6 @@
           mapView.container = "viewDiv";
           activeView = mapView;
           toggleViewBtn.textContent = "Switch to 3D";
-
-          // Update extent watch for activeView change
-          if (extentWatchHandle) {
-            extentWatchHandle.remove();
-          }
-          extentWatchHandle = activeView.watch("extent", function(newExtent) {
-            debouncedQueryFeaturesForSearch();
-          });
         } else {
           // Switch to 3D SceneView
           // Sync center and zoom from 2D view to 3D view
@@ -412,14 +444,6 @@
           view.container = "viewDiv";
           activeView = view;
           toggleViewBtn.textContent = "Switch to 2D";
-
-          // Update extent watch for activeView change
-          if (extentWatchHandle) {
-            extentWatchHandle.remove();
-          }
-          extentWatchHandle = activeView.watch("extent", function(newExtent) {
-            debouncedQueryFeaturesForSearch();
-          });
         }
       });
 
@@ -860,17 +884,6 @@
             showFeatureSearch();
           });
 
-          // Ensure highlight is refreshed on view change to fix 2D highlight issue
-          activeView.watch("updating", (isUpdating) => {
-            if (!isUpdating && highlightHandle) {
-              highlightHandle.remove();
-              // Re-highlight the last highlighted feature
-              if (highlightHandle.feature) {
-                highlightHandle = layerView.highlight(highlightHandle.feature);
-              }
-            }
-          });
-
 
 
           if (activeView.popup && typeof activeView.popup.close === "function") {
@@ -929,7 +942,7 @@
 
         // Reduced buffer distance for better performance
         const bufferDistance = 50; // Set buffer distance in meters (adjust as needed)
-        const bufferedGeometry = geometryEngine.buffer(activeView.extent, bufferDistance, "meters");
+        const bufferedGeometry = geometryEngine.buffer(view.extent, bufferDistance, "meters");
 
         query.geometry = bufferedGeometry; // Set the geometry to the buffered area
         query.outFields = ["*"];
@@ -1145,6 +1158,8 @@
       function zoomToFeature(feature) {
         if (!feature || !layerView) return;
 
+
+
         // Remove previous highlight and popup
         if (highlightHandle) {
           highlightHandle.remove();
@@ -1153,6 +1168,8 @@
         if (activeView.popup && typeof activeView.popup.close === "function") {
           activeView.popup.close();
         }
+
+
 
         // Center and zoom on feature geometry
         let geom = feature.geometry;
@@ -1165,52 +1182,18 @@
           activeView.goTo(geom);
         }
 
+
+
         // Highlight feature
         highlightHandle = layerView.highlight(feature);
+
+
 
         // Open popup on feature location
         activeView.popup.open({
           features: [feature],
           location: geom.type === "point" ? geom : geom.extent ? geom.extent.center : activeView.center
         });
-      
-
-
-
-        // // Remove previous highlight and popup
-        // if (highlightHandle) {
-        //   highlightHandle.remove();
-        //   highlightHandle = null;
-        // }
-        // if (activeView.popup && typeof activeView.popup.close === "function") {
-        //   activeView.popup.close();
-        // }
-
-
-
-        // Center and zoom on feature geometry
-        // let geom = feature.geometry;
-        // if (geom.type === "point") {
-        //   activeView.goTo({target: geom, zoom: Math.max(activeView.zoom, 18)}); // Increased zoom level from 14 to 17
-        // } else if (geom.extent) {
-        //   // zoom to extent with padding
-        //   activeView.goTo(geom.extent.expand(1.5));
-        // } else {
-        //   activeView.goTo(geom);
-        // }
-
-
-
-        // // Highlight feature
-        // highlightHandle = layerView.highlight(feature);
-
-
-
-        // // Open popup on feature location
-        // activeView.popup.open({
-        //   features: [feature],
-        //   location: geom.type === "point" ? geom : geom.extent ? geom.extent.center : activeView.center
-        // });
       }
 
 
@@ -1229,9 +1212,6 @@
 
 
 
-      // Declare extentWatchHandle to manage extent watch lifecycle
-      let extentWatchHandle = null;
-
       // Debounced queryFeaturesForSearch to reduce frequency on extent changes
       const debouncedQueryFeaturesForSearch = debounce(() => {
         if (loadedFeatureLayer) {
@@ -1239,8 +1219,8 @@
         }
       }, 500);
 
-      // Add an event listener for extent changes and assign to extentWatchHandle
-      extentWatchHandle = activeView.watch("extent", function(newExtent) {
+      // Add an event listener for extent changes
+      activeView.watch("extent", function(newExtent) {
         debouncedQueryFeaturesForSearch();
       });
 
@@ -1263,6 +1243,10 @@
       // Initial update
       view.when(() => {
         updateLocationInfo();
+        const loadingOverlay = document.getElementById("loadingOverlay");
+        if (loadingOverlay) {
+          loadingOverlay.style.display = "none";
+        }
       });
 
 	  // view.watch("extent", function(newExtent) {
