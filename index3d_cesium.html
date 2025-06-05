@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Cesium JS - Multi Feature Layer Service & Feature Data Search</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1,user-scalable=no" />
+  <!-- Load Cesium CSS and JS -->
+  <link href="https://cdn.jsdelivr.net/npm/cesium@latest/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/cesium@latest/Build/Cesium/Cesium.js"></script>
+  <style>
+    html, body, #cesiumContainer {
+      height: 100%; 
+      margin: 0; 
+      padding: 0; 
+      width: 100%;
+      font-family: "Avenir Next", Helvetica, Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    #searchContainer {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 99;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      padding: 12px 16px;
+      width: 90%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .search-block {
+      margin-bottom: 0;
+      flex-grow: 1;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: #333;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      font-size: 16px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    .suggestions {
+      margin-top: 4px;
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      display: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      position: relative;
+      z-index: 1000;
+    }
+
+    .suggestions div {
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .suggestions div:hover, .suggestions .selected {
+      background-color: #0079c1;
+      color: white;
+    }
+
+    .suggestions div .service-name {
+      font-size: 0.8em;
+      font-style: italic;
+      color: #555;
+      margin-left: 8px;
+    }
+
+    /* Media Queries for Mobile Responsiveness */
+    @media (max-width: 600px) {
+      #searchContainer {
+        width: 95%;
+        padding: 10px;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      }
+
+      #featureDatasetsMenu {
+        max-height: 150px;
+        font-size: 14px;
+        padding: 6px 8px;
+      }
+
+      #measurementDiv, #scaleBarDiv {
+        position: fixed;
+        top: auto;
+        bottom: 12px;
+        right: 12px;
+        left: auto;
+        z-index: 100;
+        background: white;
+        padding: 8px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+
+      #scaleBarDiv {
+        bottom: 60px;
+        left: 12px;
+        right: auto;
+      }
+
+      label {
+        font-size: 12px;
+      }
+
+      input[type="text"] {
+        font-size: 14px;
+        padding: 12px;
+      }
+
+      .suggestions div {
+        padding: 12px;
+      }
+
+      #hamburgerMenu svg {
+        width: 28px;
+        height: 28px;
+        stroke-width: 3;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="searchContainer">
+    <div id="searchTopRow" style="display:flex; align-items:center; gap:8px;">
+      <button id="hamburgerMenu" aria-label="Toggle feature datasets menu" title="Feature Datasets Menu" style="background:none; border:none; cursor:pointer; padding:0; margin-right:8px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="search-block" id="serviceSearchBlock" style="flex-grow: 1;">
+        <label for="serviceSearchInput" style="display:none;">Search layers across services</label>
+        <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
+        <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
+      </div>
+    </div>
+    <div id="featureDatasetsMenu" class="feature-datasets-menu" style="display:none; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin-bottom: 8px; padding: 4px 0; z-index: 1001; position: relative;">
+      <!-- Feature datasets will be populated here -->
+    </div>
+    <div class="search-block" id="featureSearchBlock" style="display:none;">
+      <label for="featureSearchInput">Search features in loaded layer</label>
+      <input type="text" id="featureSearchInput" placeholder="Search features in layer..." autocomplete="off" aria-label="Search features in layer" />
+      <div id="featureSuggestions" class="suggestions" role="listbox"></div>
+    </div>
+  </div>
+  <div id="cesiumContainer"></div>
+  <div id="scaleBarDiv" style="position:absolute; bottom:12px; left:12px; z-index: 100; background:white; padding:4px 8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+
+  <script>
+    // Cesium Viewer initialization
+    // Removed Cesium Ion access token and Ion terrain provider for no Ion services
+
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+      // Use EllipsoidTerrainProvider for no terrain or local terrain provider if available
+      terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+      baseLayerPicker: true,
+      geocoder: false,
+      homeButton: true,
+      sceneModePicker: true,
+      navigationHelpButton: true,
+      animation: false,
+      timeline: false,
+      fullscreenButton: true,
+      infoBox: true,
+      selectionIndicator: true,
+      shouldAnimate: true,
+      scene3DOnly: true,
+      shadows: false,
+      terrainShadows: Cesium.ShadowMode.DISABLED,
+      // skyBox: new Cesium.SkyBox({
+      //   sources: {
+      //     positiveX: 'https://assets.cesium.com/Assets/Textures/SkyBox/tycho2t3_80_px.jpg',
+      //     negativeX: 'https://assets.cesium.com/Assets/Textures/SkyBox/tycho2t3_80_mx.jpg',
+      //     positiveY: 'https://assets.cesium.com/Assets/Textures/SkyBox/tycho2t3_80_py.jpg',
+      //     negativeY: 'https://assets.cesium.com/Assets/Textures/SkyBox/tycho2t3_80_my.jpg',
+      //     positiveZ: 'https://assets.cesium.com/Assets/Textures/SkyBox/tycho2t3_80_pz.jpg',
+      //     negativeZ: 'https://assets.cesium.com/Assets/Textures/SkyBox/tycho2t3_80_mz.jpg'
+      //   }
+      // }),
+      // Disable default double click zoom to allow custom feature zoom
+      doubleClickZoom: false
+    });
+
+    // Set initial camera view similar to ArcGIS example
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(103.8198, 1.3521, 5000),
+      orientation: {
+        heading: Cesium.Math.toRadians(0),
+        pitch: Cesium.Math.toRadians(-45),
+        roll: 0.0
+      }
+    });
+
+    // Load 3D buildings using Cesium 3D Tiles (removed Ion tileset URL for no Ion services)
+    // You can replace this with your own publicly accessible 3D Tileset URL if available
+    // For now, no 3D buildings tileset is loaded
+
+    // buildingsTileset.readyPromise.then(() => {
+    //   viewer.zoomTo(buildingsTileset);
+    // }).otherwise((error) => {
+    //   console.error('Failed to load 3D buildings tileset:', error);
+    // });
+
+    // Placeholder for feature layers and search functionality
+    // Since Cesium does not have direct equivalent of ArcGIS FeatureLayer,
+    // you would need to implement feature loading and searching using Cesium entities or custom data sources.
+
+    // UI Elements references
+    const hamburgerMenu = document.getElementById("hamburgerMenu");
+    const featureDatasetsMenu = document.getElementById("featureDatasetsMenu");
+    const serviceSearchInput = document.getElementById("serviceSearchInput");
+    const serviceSuggestions = document.getElementById("serviceSuggestions");
+    const featureSearchBlock = document.getElementById("featureSearchBlock");
+    const featureSearchInput = document.getElementById("featureSearchInput");
+    const featureSuggestions = document.getElementById("featureSuggestions");
+
+    // Sample service URLs array (same as original, but usage will differ)
+    const serviceUrls = [
+      "https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer",
+      "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer",
+      "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer",
+      "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Water_Network/FeatureServer",
+      "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/arcgis/rest/services/OSM_AS_POIs/FeatureServer",
+      "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Buildings/FeatureServer/",
+      "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Amenities/FeatureServer/",
+      "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Shops/FeatureServer",
+      "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Leisure/FeatureServer",
+      "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Highways/FeatureServer"
+    ];
+
+    // Hamburger menu toggle
+    hamburgerMenu.addEventListener("click", () => {
+      if (featureDatasetsMenu.style.display === "block") {
+        featureDatasetsMenu.style.display = "none";
+      } else {
+        populateFeatureDatasetsMenu();
+        featureDatasetsMenu.style.display = "block";
+        const inputVal = serviceSearchInput.value.trim().toLowerCase();
+        if (inputVal.length > 0) {
+          filterFeatureDatasetsMenu(inputVal);
+        }
+      }
+    });
+
+    // Close menu if clicking outside
+    document.addEventListener("click", (event) => {
+      if (!hamburgerMenu.contains(event.target) && !featureDatasetsMenu.contains(event.target) && !serviceSearchInput.contains(event.target)) {
+        featureDatasetsMenu.style.display = "none";
+      }
+    });
+
+    // Populate feature datasets menu
+    let layerInfos = []; // Placeholder for layer info data
+
+    function populateFeatureDatasetsMenu() {
+      featureDatasetsMenu.innerHTML = "";
+      if (!layerInfos || layerInfos.length === 0) {
+        const noDataDiv = document.createElement("div");
+        noDataDiv.textContent = "No feature datasets available";
+        noDataDiv.style.padding = "8px 12px";
+        featureDatasetsMenu.appendChild(noDataDiv);
+        return;
+      }
+      layerInfos.forEach((layer, index) => {
+        const itemDiv = document.createElement("div");
+        itemDiv.textContent = layer.name;
+        itemDiv.title = layer.name + " (" + layer.serviceName + ")";
+        itemDiv.tabIndex = 0;
+        itemDiv.style.outline = "none";
+        itemDiv.addEventListener("click", () => {
+          loadLayer(layer);
+          serviceSearchInput.value = layer.name || "";
+          featureDatasetsMenu.style.display = "none";
+        });
+        itemDiv.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            loadLayer(layer);
+            serviceSearchInput.value = layer.name || "";
+            featureDatasetsMenu.style.display = "none";
+          }
+        });
+        featureDatasetsMenu.appendChild(itemDiv);
+      });
+    }
+
+    // Filter feature datasets menu items
+    function filterFeatureDatasetsMenu(filterText) {
+      const items = featureDatasetsMenu.children;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const text = item.textContent.toLowerCase();
+        if (text.includes(filterText)) {
+          item.style.display = "";
+        } else {
+          item.style.display = "none";
+        }
+      }
+    }
+
+    // Placeholder loadLayer function for Cesium
+    function loadLayer(layerInfo) {
+      // Cesium does not have direct equivalent of ArcGIS FeatureLayer
+      // This function would need to load data sources or entities accordingly
+      alert("Layer loading is not implemented in this Cesium example.");
+    }
+
+    // Feature search UI handlers (placeholders)
+    serviceSearchInput.addEventListener("input", onServiceInput);
+    serviceSearchInput.addEventListener("keydown", onServiceKeyDown);
+
+    function onServiceInput(e) {
+      const input = e.target.value.trim().toLowerCase();
+      if (input.length === 0) {
+        clearServiceSuggestions();
+        hideServiceSuggestions();
+        if (featureDatasetsMenu.style.display === "block") {
+          populateFeatureDatasetsMenu();
+        }
+        return;
+      }
+      if (featureDatasetsMenu.style.display === "block") {
+        filterFeatureDatasetsMenu(input);
+        clearServiceSuggestions();
+        hideServiceSuggestions();
+      } else {
+        const filtered = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
+        renderServiceSuggestions(filtered);
+      }
+    }
+
+    function renderServiceSuggestions(layers) {
+      clearServiceSuggestions();
+      if (layers.length === 0) {
+        hideServiceSuggestions();
+        return;
+      }
+      layers.forEach((layer, idx) => {
+        const div = document.createElement("div");
+        div.setAttribute("role", "option");
+        div.dataset.layerId = layer.id;
+        div.dataset.serviceUrl = layer.serviceUrl;
+        div.textContent = layer.name;
+
+        const serviceSpan = document.createElement("span");
+        serviceSpan.className = "service-name";
+        div.appendChild(serviceSpan);
+
+        div.addEventListener("mousedown", evt => {
+          evt.preventDefault();
+          selectServiceSuggestion(idx);
+          loadLayer(layers[idx]);
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+        });
+
+        serviceSuggestions.appendChild(div);
+      });
+      serviceSelectedIndex = -1;
+      showServiceSuggestions();
+    }
+
+    function clearServiceSuggestions() {
+      while (serviceSuggestions.firstChild) {
+        serviceSuggestions.firstChild.remove();
+      }
+    }
+
+    function showServiceSuggestions() {
+      serviceSuggestions.style.display = "block";
+    }
+
+    function hideServiceSuggestions() {
+      serviceSuggestions.style.display = "none";
+    }
+
+    function onServiceKeyDown(e) {
+      const items = serviceSuggestions.children;
+      if (!items.length) return;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          if (serviceSelectedIndex < items.length - 1) {
+            serviceSelectedIndex++;
+            updateServiceSuggestionHighlight();
+          }
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          if (serviceSelectedIndex > 0) {
+            serviceSelectedIndex--;
+            updateServiceSuggestionHighlight();
+          }
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (serviceSelectedIndex >= 0 && serviceSelectedIndex < items.length) {
+            items[serviceSelectedIndex].dispatchEvent(new Event("mousedown"));
+          } else {
+            const inputVal = serviceSearchInput.value.trim().toLowerCase();
+            const matchLayer = layerInfos.find(l => l.name.toLowerCase() === inputVal);
+            if (matchLayer) {
+              loadLayer(matchLayer);
+            }
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+          }
+          break;
+        case "Escape":
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+          break;
+      }
+    }
+
+    function updateServiceSuggestionHighlight() {
+      const items = serviceSuggestions.children;
+      for (let i = 0; i < items.length; i++) {
+        if (i === serviceSelectedIndex) {
+          items[i].classList.add("selected");
+          items[i].setAttribute("aria-selected", "true");
+        } else {
+          items[i].classList.remove("selected");
+          items[i].setAttribute("aria-selected", "false");
+        }
+      }
+    }
+
+    function selectServiceSuggestion(index) {
+      const items = serviceSuggestions.children;
+      if (index >= 0 && index < items.length) {
+        serviceSelectedIndex = index;
+        updateServiceSuggestionHighlight();
+        serviceSearchInput.value = items[index].textContent.trim();
+      }
+    }
+
+    // Feature search UI handlers (placeholders)
+    featureSearchInput.addEventListener("input", onFeatureInput);
+    featureSearchInput.addEventListener("keydown", onFeatureKeyDown);
+
+    function onFeatureInput(e) {
+      const input = e.target.value.trim().toLowerCase();
+      if (!input || featureSearchData.length === 0) {
+        clearFeatureSuggestions();
+        hideFeatureSuggestions();
+        return;
+      }
+      // Placeholder: no feature data loaded in this example
+      clearFeatureSuggestions();
+      hideFeatureSuggestions();
+    }
+
+    function clearFeatureSuggestions() {
+      while (featureSuggestions.firstChild) {
+        featureSuggestions.firstChild.remove();
+      }
+    }
+
+    function showFeatureSuggestions() {
+      featureSuggestions.style.display = "block";
+    }
+
+    function hideFeatureSuggestions() {
+      featureSuggestions.style.display = "none";
+    }
+
+    function onFeatureKeyDown(e) {
+      const items = featureSuggestions.children;
+      if (!items.length) return;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          if (featureSelectedIndex < items.length - 1) {
+            featureSelectedIndex++;
+            updateFeatureSuggestionHighlight();
+          }
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          if (featureSelectedIndex > 0) {
+            featureSelectedIndex--;
+            updateFeatureSuggestionHighlight();
+          }
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (featureSelectedIndex >= 0 && featureSelectedIndex < items.length) {
+            items[featureSelectedIndex].dispatchEvent(new Event("mousedown"));
+            featureSearchInput.value = items[featureSelectedIndex].textContent || "";
+            clearFeatureSuggestions();
+            hideFeatureSuggestions();
+          } else {
+            clearFeatureSuggestions();
+            hideFeatureSuggestions();
+          }
+          break;
+        case "Escape":
+          clearFeatureSuggestions();
+          hideFeatureSuggestions();
+          break;
+      }
+    }
+
+    function updateFeatureSuggestionHighlight() {
+      const items = featureSuggestions.children;
+      for (let i = 0; i < items.length; i++) {
+        if (i === featureSelectedIndex) {
+          items[i].classList.add("selected");
+          items[i].setAttribute("aria-selected", "true");
+        } else {
+          items[i].classList.remove("selected");
+          items[i].setAttribute("aria-selected", "false");
+        }
+      }
+    }
+
+    function selectFeatureSuggestion(index) {
+      const items = featureSuggestions.children;
+      if (index >= 0 && index < items.length) {
+        featureSelectedIndex = index;
+        updateFeatureSuggestionHighlight();
+        featureSearchInput.value = items[index].textContent.trim();
+      }
+    }
+
+    // Variables for feature search data and selection
+    let featureSearchData = [];
+    let featureSelectedIndex = -1;
+    let serviceSelectedIndex = -1;
+
+  </script>
+</body>
+</html>

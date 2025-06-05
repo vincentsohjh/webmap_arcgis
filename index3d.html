@@ -205,11 +205,12 @@
       "esri/views/SceneView",
       "esri/layers/FeatureLayer",
       "esri/layers/SceneLayer",
+      "esri/layers/VectorTileLayer",
       "esri/geometry/geometryEngine",
       "esri/widgets/Measurement",
       "esri/widgets/ScaleBar",
       "esri/time/TimeExtent"
-    ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, geometryEngine, Measurement, ScaleBar, TimeExtent) {
+    ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent) {
 
 
 
@@ -321,9 +322,14 @@
       //   }
       // });
 
+      const vectorTileLayer = new VectorTileLayer({
+        url: "https://basemaps.arcgis.com/arcgis/rest/services/OpenBasemap_v2/VectorTileServer"
+      })
+
       // Create a WebScene with a basemap
       const scene = new WebScene({
-        basemap: "streets", // Add a basemap for context
+        layers: [vectorTileLayer],
+        // basemap: "streets", // Add a basemap for context
         ground: "world-elevation" // Add elevation for 3D terrain
       });
 
