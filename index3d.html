@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+in<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -209,8 +209,10 @@
       "esri/geometry/geometryEngine",
       "esri/widgets/Measurement",
       "esri/widgets/ScaleBar",
-      "esri/time/TimeExtent"
-    ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent) {
+      "esri/time/TimeExtent",
+      "esri/Graphic",
+      "esri/geometry/Point"
+    ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point) {
 
 
 
@@ -375,6 +377,55 @@
                 altitude: 45   // Sun's altitude angle (degrees)
             }
         };
+
+        // Zoom to current location if GPS is available
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function(position) {
+              const userLocation = {
+                longitude: position.coords.longitude,
+                latitude: position.coords.latitude
+              };
+
+              // Create a point geometry for the user's location
+              const userPoint = new Point({
+                longitude: userLocation.longitude,
+                latitude: userLocation.latitude
+              });
+
+              // Create a picture marker symbol (map marker)
+              const markerSymbol = {
+                type: "picture-marker",
+                url: "https://static.arcgis.com/images/Symbols/Shapes/BluePin1LargeB.png",
+                width: "32px",
+                height: "32px",
+                // Optional: add an anchor point if needed
+                // yoffset: 12
+              };
+
+              // Create a graphic and add it to the view
+              const userGraphic = new Graphic({
+                geometry: userPoint,
+                symbol: markerSymbol
+              });
+              view.graphics.add(userGraphic);
+
+              // Zoom to the user's location at zoom 17
+              view.goTo({
+                target: [userLocation.longitude, userLocation.latitude],
+                zoom: 17
+              }).catch(function(error) {
+                console.error("Error zooming to user location:", error);
+              });
+            },
+            function(error) {
+              console.warn("Geolocation error:", error.message);
+              // Keep default view if error or permission denied
+            }
+          );
+        } else {
+          console.warn("Geolocation is not supported by this browser.");
+        }
       });
 
       // Debounce function to limit frequency of calls
