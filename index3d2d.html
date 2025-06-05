@@ -236,6 +236,7 @@
     // New code for hamburger menu functionality
     const hamburgerMenu = document.getElementById("hamburgerMenu");
     const featureDatasetsMenu = document.getElementById("featureDatasetsMenu");
+    let userLocation = {};
 
     // Populate the feature datasets menu with layerInfos
     function populateFeatureDatasetsMenu() {
@@ -439,7 +440,7 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           function(position) {
-            const userLocation = {
+            userLocation = {
               longitude: position.coords.longitude,
               latitude: position.coords.latitude
             };
@@ -460,6 +461,12 @@
               latitude: userLocation.latitude,
               z: lineHeight
             });
+
+            const userPoint2D = new Point({
+              longitude: userLocation.longitude,
+              latitude: userLocation.latitude,
+            });
+
 
             // Create a polyline geometry for the vertical line from ground to topPoint
             const verticalLine = {
@@ -503,8 +510,14 @@
               symbol: markerSymbol
             });
 
+            const user2DGraphic = new Graphic({
+              geometry: userPoint2D,
+              symbol: markerSymbol
+            });
+
             // Add the line and marker graphics to the view
             view.graphics.addMany([lineGraphic, userGraphic]);
+            mapView.graphics.addMany([user2DGraphic]);
 
             // Zoom to the user's location at zoom 17
             view.goTo({
@@ -863,7 +876,7 @@
           // Ensure highlight is refreshed on view change to fix 2D highlight issue
           activeView.watch("updating", (isUpdating) => {
             if (!isUpdating && highlightHandle) {
-              highlightHandle.remove();
+              // highlightHandle.remove();
               // Re-highlight the last highlighted feature
               if (highlightHandle.feature) {
                 highlightHandle = layerView.highlight(highlightHandle.feature);
@@ -928,7 +941,7 @@
         const query = featureLayer.createQuery();
 
         // Reduced buffer distance for better performance
-        const bufferDistance = 50; // Set buffer distance in meters (adjust as needed)
+        const bufferDistance = 5; // Set buffer distance in meters (adjust as needed)
         const bufferedGeometry = geometryEngine.buffer(activeView.extent, bufferDistance, "meters");
 
         query.geometry = bufferedGeometry; // Set the geometry to the buffered area
@@ -1169,48 +1182,11 @@
         highlightHandle = layerView.highlight(feature);
 
         // Open popup on feature location
-        activeView.popup.open({
+        if(activeView.popup){activeView.popup.open({
           features: [feature],
           location: geom.type === "point" ? geom : geom.extent ? geom.extent.center : activeView.center
-        });
-      
-
-
-
-        // // Remove previous highlight and popup
-        // if (highlightHandle) {
-        //   highlightHandle.remove();
-        //   highlightHandle = null;
-        // }
-        // if (activeView.popup && typeof activeView.popup.close === "function") {
-        //   activeView.popup.close();
-        // }
-
-
-
-        // Center and zoom on feature geometry
-        // let geom = feature.geometry;
-        // if (geom.type === "point") {
-        //   activeView.goTo({target: geom, zoom: Math.max(activeView.zoom, 18)}); // Increased zoom level from 14 to 17
-        // } else if (geom.extent) {
-        //   // zoom to extent with padding
-        //   activeView.goTo(geom.extent.expand(1.5));
-        // } else {
-        //   activeView.goTo(geom);
-        // }
-
-
-
-        // // Highlight feature
-        // highlightHandle = layerView.highlight(feature);
-
-
-
-        // // Open popup on feature location
-        // activeView.popup.open({
-        //   features: [feature],
-        //   location: geom.type === "point" ? geom : geom.extent ? geom.extent.center : activeView.center
-        // });
+          });
+        }
       }
 
 
