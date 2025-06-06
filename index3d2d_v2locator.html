@@ -336,9 +336,8 @@
       "esri/Graphic",
       "esri/geometry/Point",
       "esri/symbols/PointSymbol3D",
-      "esri/symbols/ObjectSymbol3DLayer",
-      "esri/rest/locator"
-      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, locator) {
+      "esri/symbols/ObjectSymbol3DLayer"
+      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer) {
 
 
       // 1. Updated basemap configurations (replace the existing basemapConfigs array)
@@ -495,7 +494,10 @@
         "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Highways/FeatureServer"
     ];
 
-    const geocodeServiceUrl = "https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer";
+    // const geocodeServiceUrl = "https://nominatim.openstreetmap.org/search";
+    // const geocodeServiceUrl = "https://api.mapbox.com/search/geocode/v6/forward";
+    const geocodeServiceUrl = "https://api.mapbox.com/search/searchbox/v1/suggest"
+    const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiZ3NyMTciLCJhIjoiY21ia3hudTA1MGx1bzJqcXY5bGc3ZXI1ZCJ9.XahvXYmDAts7i3YVd2KoQg"; // Replace with your actual token
 
     // New code for hamburger menu functionality
     const hamburgerMenu = document.getElementById("hamburgerMenu");
@@ -802,6 +804,16 @@
         };
       }
 
+      function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      }
+
+      const uuid = generateUUID();
+
       const debouncedAddressSearch = debounce(async (searchText) => {
         if (searchText.length < 3) {
           return [];
@@ -809,26 +821,64 @@
         
         try {
           isSearchingAddresses = true;
-          const params = {
-            address: {
-              'SingleLine': searchText
-            },
-            outFields: ["*"],
-            maxLocations: 10,
-            countryCode: "SG", // Focus on Singapore, remove or change as needed
-            location: activeView.center, // Bias results to current map center
-            distance: 50000 // 50km radius
-          };
           
-          const response = await locator.addressToLocations(geocodeServiceUrl, params);
+          // Build Mapbox Geocoding API query URL
+          const encodedQuery = encodeURIComponent(searchText);
+          const params = new URLSearchParams({
+            q: searchText,
+            access_token: MAPBOX_ACCESS_TOKEN,
+            country: 'SG', // Focus on Singapore
+            limit: '10',
+            types: 'poi', // Include addresses, points of interest, and places
+            // autocomplete: 'true',
+            session_token: uuid
+            // format: "v5"
+          });
+          
+          const response = await fetch(`${geocodeServiceUrl}?${params}`);
+          const data = await response.json();
+
+          console.log(data);
+          
+          // Transform Mapbox response to match the expected format
+          const transformedResults = data.features?.map(item => {
+            const coordinates = item.geometry.coordinates; // [longitude, latitude]
+            const context = item.context || [];
+            const getContextValue = (type) => {
+              const contextItem = context.find(c => c.id.startsWith(type));
+              return contextItem ? contextItem.text : '';
+            };
+            
+            return {
+              address: item.place_name,
+              location: {
+                x: coordinates[0], // longitude
+                y: coordinates[1], // latitude
+                longitude: coordinates[0],
+                latitude: coordinates[1],
+                spatialReference: { wkid: 4326 }
+              },
+              score: item.relevance * 100 || 50, // Mapbox uses relevance (0-1), convert to 0-100
+              attributes: {
+                City: getContextValue('place') || getContextValue('locality'),
+                Region: getContextValue('region') || getContextValue('district'),
+                Country: getContextValue('country') || 'Singapore',
+                PostalCode: getContextValue('postcode') || ''
+              }
+            };
+          }) || [];
+          
           isSearchingAddresses = false;
-          return response;
+          return transformedResults;
         } catch (error) {
           console.error("Address search error:", error);
           isSearchingAddresses = false;
           return [];
         }
       }, 300);
+
+      
+
 
       // Lazy load Measurement widget after view is ready
       let measurement;
@@ -1060,10 +1110,9 @@
           div.dataset.serviceUrl = layer.serviceUrl;
           div.style.borderLeft = "3px solid #007bff"; // Blue border for layers
           
-          div.innerHTML = `
-            <div style="font-weight: bold;">${layer.name}</div>
-            <div style="font-size: 0.8em; color: #666; font-style: italic;">🗺️ ${layer.serviceName || 'Feature Layer'}</div>
-          `;
+          div.innerHTML = `<div style="font-weight: normal;padding:0px;">${layer.name}</div>`;
+
+          // <div style="font-size: 0.8em; color: #666; font-style: italic;">🗺️ ${layer.serviceName || 'Feature Layer'}</div>
           
           div.addEventListener("mousedown", evt => {
             evt.preventDefault();
