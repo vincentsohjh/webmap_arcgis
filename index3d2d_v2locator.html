@@ -334,7 +334,8 @@
       "esri/geometry/Point",
       "esri/symbols/PointSymbol3D",
       "esri/symbols/ObjectSymbol3DLayer",
-      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer) {
+      "esri/rest/locator"
+      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, locator) {
 
 
       // 1. Updated basemap configurations (replace the existing basemapConfigs array)
@@ -491,10 +492,14 @@
         "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Highways/FeatureServer"
     ];
 
+    const geocodeServiceUrl = "https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer";
+
     // New code for hamburger menu functionality
     const hamburgerMenu = document.getElementById("hamburgerMenu");
     const featureDatasetsMenu = document.getElementById("featureDatasetsMenu");
     let userLocation = {};
+    let addressSearchData = [];
+    let isSearchingAddresses = false;
 
     // Populate the feature datasets menu with layerInfos
     function populateFeatureDatasetsMenu() {
@@ -794,6 +799,34 @@
         };
       }
 
+      const debouncedAddressSearch = debounce(async (searchText) => {
+        if (searchText.length < 3) {
+          return [];
+        }
+        
+        try {
+          isSearchingAddresses = true;
+          const params = {
+            address: {
+              'SingleLine': searchText
+            },
+            outFields: ["*"],
+            maxLocations: 10,
+            countryCode: "SG", // Focus on Singapore, remove or change as needed
+            location: activeView.center, // Bias results to current map center
+            distance: 50000 // 50km radius
+          };
+          
+          const response = await locator.addressToLocations(geocodeServiceUrl, params);
+          isSearchingAddresses = false;
+          return response;
+        } catch (error) {
+          console.error("Address search error:", error);
+          isSearchingAddresses = false;
+          return [];
+        }
+      }, 300);
+
       // Lazy load Measurement widget after view is ready
       let measurement;
       view.when(() => {
@@ -899,30 +932,41 @@
       // --- Service Search ---
 
 
-
-    function onServiceInput(e) {
-      const input = e.target.value.trim().toLowerCase();
-      if (input.length === 0) {
-        clearServiceSuggestions();
-        hideServiceSuggestions();
-        // Also reset feature datasets menu to full list if open
-        if (featureDatasetsMenu.style.display === "block") {
-          populateFeatureDatasetsMenu();
+      // 5. Replace the onServiceInput function completely
+      function onServiceInput(e) {
+        const input = e.target.value.trim().toLowerCase();
+        if (input.length === 0) {
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+          addressSearchData = [];
+          // Also reset feature datasets menu to full list if open
+          if (featureDatasetsMenu.style.display === "block") {
+            populateFeatureDatasetsMenu();
+          }
+          return;
         }
-        return;
+        
+        if (featureDatasetsMenu.style.display === "block") {
+          // When menu is open, only filter the menu items and hide service suggestions
+          filterFeatureDatasetsMenu(input);
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+        } else {
+          // When menu is closed, show both layer and address suggestions
+          const filteredLayers = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
+          
+          // Search for addresses if input is long enough
+          if (input.length >= 3) {
+            debouncedAddressSearch(input).then(addressResults => {
+              addressSearchData = addressResults;
+              renderCombinedSuggestions(filteredLayers, addressResults);
+            });
+          } else {
+            addressSearchData = [];
+            renderCombinedSuggestions(filteredLayers, []);
+          }
+        }
       }
-      if (featureDatasetsMenu.style.display === "block") {
-        // When menu is open, only filter the menu items and hide service suggestions
-        filterFeatureDatasetsMenu(input);
-        clearServiceSuggestions();
-        hideServiceSuggestions();
-      } else {
-        // When menu is closed, show service suggestions as search results
-        const filtered = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
-        renderServiceSuggestions(filtered);
-      }
-    }
-
 
 
       function renderServiceSuggestions(layers) {
@@ -963,6 +1007,76 @@
       }
 
 
+      function renderCombinedSuggestions(layers, addresses) {
+        clearServiceSuggestions();
+        
+        let totalResults = layers.length + addresses.length;
+        if (totalResults === 0) {
+          hideServiceSuggestions();
+          return;
+        }
+        
+        let index = 0;
+        
+        // Add address results first
+        addresses.forEach((address, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.type = "address";
+          div.dataset.addressIndex = idx;
+          div.style.borderLeft = "3px solid #28a745"; // Green border for addresses
+          
+          const mainText = address.address || "Unknown Address";
+          const locationText = address.attributes ? 
+            `${address.attributes.City || ''}, ${address.attributes.Region || ''}`.replace(/^,\s*|,\s*$/, '') : '';
+          
+          div.innerHTML = `
+            <div style="font-weight: bold;">${mainText}</div>
+            <div style="font-size: 0.8em; color: #666; font-style: italic;">📍 ${locationText}</div>
+          `;
+          
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault();
+            selectServiceSuggestion(index);
+            serviceSearchInput.value = mainText;
+            zoomToAddress(address);
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+          });
+          
+          serviceSuggestions.appendChild(div);
+          index++;
+        });
+        
+        // Add layer results
+        layers.forEach((layer, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.type = "layer";
+          div.dataset.layerId = layer.id;
+          div.dataset.serviceUrl = layer.serviceUrl;
+          div.style.borderLeft = "3px solid #007bff"; // Blue border for layers
+          
+          div.innerHTML = `
+            <div style="font-weight: bold;">${layer.name}</div>
+            <div style="font-size: 0.8em; color: #666; font-style: italic;">🗺️ ${layer.serviceName || 'Feature Layer'}</div>
+          `;
+          
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault();
+            selectServiceSuggestion(index);
+            loadLayer(layer);
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+          });
+          
+          serviceSuggestions.appendChild(div);
+          index++;
+        });
+        
+        serviceSelectedIndex = -1;
+        showServiceSuggestions();
+      }
 
       function clearServiceSuggestions() {
         while (serviceSuggestions.firstChild) {
@@ -983,12 +1097,9 @@
       }
 
 
-
       function onServiceKeyDown(e) {
         const items = serviceSuggestions.children;
         if (!items.length) return;
-
-
 
         switch (e.key) {
           case "ArrowDown":
@@ -1008,12 +1119,38 @@
           case "Enter":
             e.preventDefault();
             if (serviceSelectedIndex >= 0 && serviceSelectedIndex < items.length) {
-              items[serviceSelectedIndex].dispatchEvent(new Event("mousedown"));
+              const selectedItem = items[serviceSelectedIndex];
+              const itemType = selectedItem.dataset.type;
+              
+              if (itemType === "address") {
+                const addressIndex = parseInt(selectedItem.dataset.addressIndex);
+                const address = addressSearchData[addressIndex];
+                serviceSearchInput.value = address.address || "";
+                zoomToAddress(address);
+              } else if (itemType === "layer") {
+                const layerId = selectedItem.dataset.layerId;
+                const serviceUrl = selectedItem.dataset.serviceUrl;
+                const layer = layerInfos.find(l => l.id == layerId && l.serviceUrl === serviceUrl);
+                if (layer) {
+                  loadLayer(layer);
+                }
+              }
+              
+              clearServiceSuggestions();
+              hideServiceSuggestions();
             } else {
+              // Handle direct input matching
               const inputVal = serviceSearchInput.value.trim().toLowerCase();
               const matchLayer = layerInfos.find(l => l.name.toLowerCase() === inputVal);
               if (matchLayer) {
                 loadLayer(matchLayer);
+              } else if (inputVal.length >= 3) {
+                // Try address search for exact match
+                debouncedAddressSearch(inputVal).then(addressResults => {
+                  if (addressResults.length > 0) {
+                    zoomToAddress(addressResults[0]);
+                  }
+                });
               }
               clearServiceSuggestions();
               hideServiceSuggestions();
@@ -1025,8 +1162,6 @@
             break;
         }
       }
-
-
 
       function updateServiceSuggestionHighlight() {
         const items = serviceSuggestions.children;
@@ -1438,6 +1573,55 @@
       }
 
 
+      function zoomToAddress(addressResult) {
+        if (!addressResult || !addressResult.location) return;
+        
+        const point = addressResult.location;
+        const address = addressResult.address || "Selected Address";
+        
+        // Create a graphic for the address point
+        const addressGraphic = new Graphic({
+          geometry: point,
+          symbol: {
+            type: "picture-marker",
+            url: "https://static.arcgis.com/images/Symbols/Shapes/RedPin1LargeB.png",
+            width: "32px",
+            height: "32px",
+            yoffset: 16
+          },
+          attributes: {
+            Name: address,
+            Address: address,
+            Score: addressResult.score
+          },
+          popupTemplate: {
+            title: "📍 Address",
+            content: `
+              <b>Address:</b> ${address}<br>
+              <b>Score:</b> ${addressResult.score || 'N/A'}<br>
+              <b>Location:</b> ${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}
+            `
+          }
+        });
+        
+        // Clear previous address graphics (optional - remove if you want to keep multiple pins)
+        activeView.graphics.removeAll();
+        
+        // Add the address graphic
+        activeView.graphics.add(addressGraphic);
+        
+        // Zoom to the address
+        activeView.goTo({
+          target: point,
+          zoom: Math.max(activeView.zoom, 16)
+        }).then(() => {
+          // Open popup
+          activeView.popup.open({
+            features: [addressGraphic],
+            location: point
+          });
+        });
+      }
 
       // Close suggestions if click outside inputs or suggestions containers
       document.addEventListener("click", evt => {
