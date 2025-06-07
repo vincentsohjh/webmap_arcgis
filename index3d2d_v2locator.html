@@ -836,44 +836,56 @@
           });
           
           const response = await fetch(`${geocodeServiceUrl}?${params}`);
-          const data = await response.json();
 
-          console.log(data);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
           
-          // Transform Mapbox response to match the expected format
-          const transformedResults = data.features?.map(item => {
-            const coordinates = item.geometry.coordinates; // [longitude, latitude]
-            const context = item.context || [];
-            const getContextValue = (type) => {
-              const contextItem = context.find(c => c.id.startsWith(type));
-              return contextItem ? contextItem.text : '';
-            };
+          const data = await response.json();
+          console.log('Raw Mapbox data:', data);
+
+          if (!data.suggestions || !Array.isArray(data.suggestions)) {
+            console.warn('No suggestions found in response');
+            return [];
+          }
+        
+          const transformedResults = data.suggestions.map(item => {
+            const context = item.context || {};
             
             return {
-              address: item.place_name,
+              address: item.full_address || item.name || 'Unknown location',
               location: {
-                x: coordinates[0], // longitude
-                y: coordinates[1], // latitude
-                longitude: coordinates[0],
-                latitude: coordinates[1],
+                // Mapbox Search API suggestions don't include coordinates
+                // You'll need to make a second API call to get coordinates
+                x: null,
+                y: null,
+                longitude: null,
+                latitude: null,
                 spatialReference: { wkid: 4326 }
               },
-              score: item.relevance * 100 || 50, // Mapbox uses relevance (0-1), convert to 0-100
+              score: 100, // Search API doesn't provide relevance
               attributes: {
-                City: getContextValue('place') || getContextValue('locality'),
-                Region: getContextValue('region') || getContextValue('district'),
-                Country: getContextValue('country') || 'Singapore',
-                PostalCode: getContextValue('postcode') || ''
+                City: context.place?.name || 'Singapore',
+                Region: context.place?.name || '',
+                Country: context.country?.name || 'Singapore',
+                PostalCode: context.postcode?.name || '',
+                MapboxId: item.mapbox_id, // Store for coordinate lookup
+                FeatureType: item.feature_type,
+                Category: item.poi_category?.join(', ') || '',
+                Name: item.name,
+                Address: item.address
               }
             };
-          }) || [];
+          }).filter(Boolean);
           
-          isSearchingAddresses = false;
+          console.log('Final transformed results:', transformedResults);
           return transformedResults;
+          
         } catch (error) {
           console.error("Address search error:", error);
-          isSearchingAddresses = false;
           return [];
+        } finally {
+          isSearchingAddresses = false;
         }
       }, 300);
 
@@ -1012,7 +1024,8 @@
           if (input.length >= 3) {
             debouncedAddressSearch(input).then(addressResults => {
               addressSearchData = addressResults;
-              renderCombinedSuggestions(filteredLayers, addressResults);
+              console.log(addressSearchData)
+              renderCombinedSuggestions(addressResults, filteredLayers);
             });
           } else {
             addressSearchData = [];
