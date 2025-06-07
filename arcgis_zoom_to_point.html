@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Zoom to Point Examples</title>
+    <style>
+        html, body, #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 99;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            max-width: 320px;
+        }
+        
+        button {
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: #0079c1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #005a87;
+        }
+        
+        input, select {
+            margin: 5px 0;
+            padding: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .control-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        h4 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .coordinate-input {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .coordinate-input input {
+            flex: 1;
+        }
+        
+        .info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.28/"></script>
+</head>
+<body>
+    <div id="viewDiv"></div>
+    <div id="controls">
+        <div class="control-group">
+            <h4>Zoom to Coordinates</h4>
+            <div class="coordinate-input">
+                <input type="number" id="longitude" placeholder="Longitude" value="-118.2437" step="any">
+                <input type="number" id="latitude" placeholder="Latitude" value="34.0522" step="any">
+            </div>
+            <select id="zoomLevel">
+                <option value="10">Zoom Level 10 (City)</option>
+                <option value="15" selected>Zoom Level 15 (Neighborhood)</option>
+                <option value="18">Zoom Level 18 (Street)</option>
+                <option value="20">Zoom Level 20 (Building)</option>
+            </select>
+            <button id="zoomToCoords">Zoom to Coordinates</button>
+            <div class="info">Enter longitude and latitude to zoom</div>
+        </div>
+        
+        <div class="control-group">
+            <h4>Zoom Methods</h4>
+            <button id="zoomWithAnimation">Zoom with Animation</button>
+            <button id="zoomInstant">Zoom Instantly</button>
+            <button id="zoomWithExtent">Zoom with Extent</button>
+            <button id="zoomWithScale">Zoom with Scale</button>
+        </div>
+        
+        <div class="control-group">
+            <h4>Predefined Locations</h4>
+            <button id="zoomToLA">Los Angeles</button>
+            <button id="zoomToNY">New York</button>
+            <button id="zoomToChicago">Chicago</button>
+            <button id="zoomToLondon">London</button>
+        </div>
+        
+        <div class="control-group">
+            <h4>Advanced Options</h4>
+            <button id="zoomAndHighlight">Zoom & Highlight Point</button>
+            <button id="zoomWithBuffer">Zoom with Buffer Zone</button>
+            <button id="clearGraphics">Clear Graphics</button>
+        </div>
+    </div>
+
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/geometry/Point",
+            "esri/geometry/Extent",
+            "esri/Graphic",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/geometry/geometryEngine"
+        ], (Map, MapView, Point, Extent, Graphic, SimpleMarkerSymbol, geometryEngine) => {
+
+            const map = new Map({
+                basemap: "streets-navigation-vector"
+            });
+
+            const view = new MapView({
+                container: "viewDiv",
+                map: map,
+                center: [-118.2437, 34.0522],
+                zoom: 10
+            });
+
+            // Method 1: Basic zoom to point with coordinates
+            function zoomToPoint(longitude, latitude, zoomLevel = 15) {
+                const point = new Point({
+                    longitude: longitude,
+                    latitude: latitude
+                });
+
+                view.goTo({
+                    target: point,
+                    zoom: zoomLevel
+                });
+            }
+
+            // Method 2: Zoom with animation options
+            function zoomToPointWithAnimation(longitude, latitude, zoomLevel = 15) {
+                const point = new Point({
+                    longitude: longitude,
+                    latitude: latitude
+                });
+
+                view.goTo({
+                    target: point,
+                    zoom: zoomLevel
+                }, {
+                    duration: 2000, // 2 seconds
+                    easing: "ease-in-out"
+                });
+            }
+
+            // Method 3: Zoom instantly (no animation)
+            function zoomToPointInstant(longitude, latitude, zoomLevel = 15) {
+                const point = new Point({
+                    longitude: longitude,
+                    latitude: latitude
+                });
+
+                view.goTo({
+                    target: point,
+                    zoom: zoomLevel
+                }, {
+                    animate: false
+                });
+            }
+
+            // Method 4: Zoom using extent
+            function zoomToPointWithExtent(longitude, latitude, extentSize = 0.01) {
+                const extent = new Extent({
+                    xmin: longitude - extentSize,
+                    ymin: latitude - extentSize,
+                    xmax: longitude + extentSize,
+                    ymax: latitude + extentSize,
+                    spatialReference: { wkid: 4326 }
+                });
+
+                view.goTo(extent);
+            }
+
+            // Method 5: Zoom using scale
+            function zoomToPointWithScale(longitude, latitude, scale = 50000) {
+                const point = new Point({
+                    longitude: longitude,
+                    latitude: latitude
+                });
+
+                view.goTo({
+                    target: point,
+                    scale: scale
+                });
+            }
+
+            // Method 6: Zoom and add a graphic to highlight the point
+            function zoomAndHighlightPoint(longitude, latitude, zoomLevel = 15) {
+                const point = new Point({
+                    longitude: longitude,
+                    latitude: latitude
+                });
+
+                // Create a graphic for the point
+                const pointGraphic = new Graphic({
+                    geometry: point,
+                    symbol: new SimpleMarkerSymbol({
+                        color: [255, 0, 0],
+                        size: 12,
+                        outline: {
+                            color: [255, 255, 255],
+                            width: 2
+                        }
+                    })
+                });
+
+                // Add graphic to view
+                view.graphics.add(pointGraphic);
+
+                // Zoom to point
+                view.goTo({
+                    target: point,
+                    zoom: zoomLevel
+                });
+            }
+
+            // Method 7: Zoom with buffer zone
+            function zoomToPointWithBuffer(longitude, latitude, bufferDistance = 1000) {
+                const point = new Point({
+                    longitude: longitude,
+                    latitude: latitude
+                });
+
+                // Create buffer around point
+                const buffer = geometryEngine.buffer(point, bufferDistance, "meters");
+
+                // Zoom to buffer extent
+                view.goTo(buffer);
+            }
+
+            // Predefined locations
+            const locations = {
+                la: { lon: -118.2437, lat: 34.0522, name: "Los Angeles" },
+                ny: { lon: -74.0059, lat: 40.7128, name: "New York" },
+                chicago: { lon: -87.6298, lat: 41.8781, name: "Chicago" },
+                london: { lon: -0.1276, lat: 51.5074, name: "London" }
+            };
+
+            // Get coordinates from input fields
+            function getInputCoordinates() {
+                const lon = parseFloat(document.getElementById("longitude").value);
+                const lat = parseFloat(document.getElementById("latitude").value);
+                const zoom = parseInt(document.getElementById("zoomLevel").value);
+                
+                if (isNaN(lon) || isNaN(lat)) {
+                    alert("Please enter valid coordinates");
+                    return null;
+                }
+                
+                return { lon, lat, zoom };
+            }
+
+            // Event listeners
+            document.getElementById("zoomToCoords").addEventListener("click", () => {
+                const coords = getInputCoordinates();
+                if (coords) {
+                    zoomToPoint(coords.lon, coords.lat, coords.zoom);
+                }
+            });
+
+            document.getElementById("zoomWithAnimation").addEventListener("click", () => {
+                const coords = getInputCoordinates();
+                if (coords) {
+                    zoomToPointWithAnimation(coords.lon, coords.lat, coords.zoom);
+                }
+            });
+
+            document.getElementById("zoomInstant").addEventListener("click", () => {
+                const coords = getInputCoordinates();
+                if (coords) {
+                    zoomToPointInstant(coords.lon, coords.lat, coords.zoom);
+                }
+            });
+
+            document.getElementById("zoomWithExtent").addEventListener("click", () => {
+                const coords = getInputCoordinates();
+                if (coords) {
+                    zoomToPointWithExtent(coords.lon, coords.lat);
+                }
+            });
+
+            document.getElementById("zoomWithScale").addEventListener("click", () => {
+                const coords = getInputCoordinates();
+                if (coords) {
+                    zoomToPointWithScale(coords.lon, coords.lat);
+                }
+            });
+
+            document.getElementById("zoomAndHighlight").addEventListener("click", () => {
+                const coords = getInputCoordinates();
+                if (coords) {
+                    zoomAndHighlightPoint(coords.lon, coords.lat, coords.zoom);
+                }
+            });
+
+            document.getElementById("zoomWithBuffer").addEventListener("click", () => {
+                const coords = getInputCoordinates();
+                if (coords) {
+                    zoomToPointWithBuffer(coords.lon, coords.lat);
+                }
+            });
+
+            // Predefined location buttons
+            document.getElementById("zoomToLA").addEventListener("click", () => {
+                zoomToPoint(locations.la.lon, locations.la.lat, 15);
+            });
+
+            document.getElementById("zoomToNY").addEventListener("click", () => {
+                zoomToPoint(locations.ny.lon, locations.ny.lat, 15);
+            });
+
+            document.getElementById("zoomToChicago").addEventListener("click", () => {
+                zoomToPoint(locations.chicago.lon, locations.chicago.lat, 15);
+            });
+
+            document.getElementById("zoomToLondon").addEventListener("click", () => {
+                zoomToPoint(locations.london.lon, locations.london.lat, 15);
+            });
+
+            document.getElementById("clearGraphics").addEventListener("click", () => {
+                view.graphics.removeAll();
+            });
+
+            // Click on map to get coordinates
+            view.on("click", (event) => {
+                const point = event.mapPoint;
+                document.getElementById("longitude").value = point.longitude.toFixed(6);
+                document.getElementById("latitude").value = point.latitude.toFixed(6);
+            });
+        });
+    </script>
+</body>
+</html>
