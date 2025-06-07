@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ArcGIS JS SDK - Multi Feature Layer Service & Feature Data Search</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1,user-scalable=no" />
+  <!-- Load ArcGIS API for JavaScript -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.32/"></script>
+  <style>
+    html, body, #viewDiv {
+      height: 100%; 
+      margin: 0; 
+      padding: 0; 
+      width: 100%;
+      font-family: "Avenir Next", Helvetica, Arial, sans-serif;
+    }
+
+
+
+    #viewDiv {
+      outline: none; /* Prevent outline from appearing */
+      border: none; /* Remove any border if present */
+    }
+
+
+
+    #searchContainer {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 99;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      padding: 12px 16px;
+      width: 90%; /* Use percentage for responsiveness */
+      max-width: 380px; /* Set a max width */
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+
+
+    .search-block {
+      margin-bottom: 0;
+      flex-grow: 1;
+    }
+
+
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: #333;
+    }
+
+
+
+    input[type="text"] {
+      width: 100%;
+      font-size: 16px;
+      padding: 10px; /* Increased padding for better touch targets */
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+
+
+    .suggestions {
+      margin-top: 4px;
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      display: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      position: relative;
+      z-index: 1000;
+    }
+
+
+
+    .suggestions div {
+      padding: 10px; /* Increased padding for better touch targets */
+      cursor: pointer;
+    }
+
+
+
+    .suggestions div:hover, .suggestions .selected {
+      background-color: #0079c1;
+      color: white;
+    }
+
+
+
+    .suggestions div .service-name {
+      font-size: 0.8em;
+      font-style: italic;
+      color: #555;
+      margin-left: 8px;
+    }
+
+
+
+    /* Media Queries for Mobile Responsiveness */
+    @media (max-width: 600px) {
+      #searchContainer {
+        width: 95%; /* Adjust width for smaller screens */
+        padding: 10px; /* Adjust padding */
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      }
+
+      #featureDatasetsMenu {
+        max-height: 150px;
+        font-size: 14px;
+        padding: 6px 8px;
+      }
+
+      #measurementDiv, #scaleBarDiv {
+        position: fixed;
+        top: auto;
+        bottom: 12px;
+        right: 12px;
+        left: auto;
+        z-index: 100;
+        background: white;
+        padding: 8px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+
+      #scaleBarDiv {
+        bottom: 60px;
+        left: 12px;
+        right: auto;
+      }
+
+      label {
+        font-size: 12px; /* Smaller font size for labels */
+      }
+
+      input[type="text"] {
+        font-size: 14px; /* Smaller font size for inputs */
+        padding: 12px; /* Larger padding for touch targets */
+      }
+
+      .suggestions div {
+        padding: 12px; /* Larger padding for suggestions */
+      }
+
+      #hamburgerMenu svg {
+        width: 28px;
+        height: 28px;
+        stroke-width: 3;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="searchContainer">
+    <div id="searchTopRow" style="display:flex; align-items:center; gap:8px;">
+      <button id="hamburgerMenu" aria-label="Toggle feature datasets menu" title="Feature Datasets Menu" style="background:none; border:none; cursor:pointer; padding:0; margin-right:8px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="search-block" id="serviceSearchBlock" style="flex-grow: 1;">
+        <label for="serviceSearchInput" style="display:none;">Search layers across services</label>
+        <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
+        <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
+      </div>
+    </div>
+    <div id="featureDatasetsMenu" class="feature-datasets-menu" style="display:none; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin-bottom: 8px; padding: 4px 0; z-index: 1001; position: relative;">
+      <!-- Feature datasets will be populated here -->
+    </div>
+    <div class="search-block" id="featureSearchBlock" style="display:none;">
+      <label for="featureSearchInput">Search features in loaded layer</label>
+      <input type="text" id="featureSearchInput" placeholder="Search features in layer..." autocomplete="off" aria-label="Search features in layer" />
+      <div id="featureSuggestions" class="suggestions" role="listbox"></div>
+    </div>
+  </div>
+  <div id="viewDiv"></div>
+  <!-- <div id="measurementDiv" style="position:absolute; top:12px; right:12px; z-index: 100; background:white; padding:8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div> -->
+  <div id="scaleBarDiv" style="position:absolute; bottom:12px; left:12px; z-index: 100; background:white; padding:4px 8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+
+
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/geometry/geometryEngine",
+      "esri/widgets/Measurement",
+      "esri/widgets/ScaleBar"
+    ], function(Map, MapView, FeatureLayer, geometryEngine, Measurement, ScaleBar) {
+
+
+
+      // List of Feature Layer Service URLs to search through
+      const serviceUrls = [
+        "https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer",
+        "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer",
+        "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer",
+        "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Water_Network/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/arcgis/rest/services/OSM_AS_POIs/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Buildings/FeatureServer/",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Amenities/FeatureServer/",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Shops/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Leisure/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Highways/FeatureServer"
+    ];
+
+    // New code for hamburger menu functionality
+    const hamburgerMenu = document.getElementById("hamburgerMenu");
+    const featureDatasetsMenu = document.getElementById("featureDatasetsMenu");
+
+    // Populate the feature datasets menu with layerInfos
+    function populateFeatureDatasetsMenu() {
+      featureDatasetsMenu.innerHTML = "";
+      if (!layerInfos || layerInfos.length === 0) {
+        const noDataDiv = document.createElement("div");
+        noDataDiv.textContent = "No feature datasets available";
+        noDataDiv.style.padding = "8px 12px";
+        featureDatasetsMenu.appendChild(noDataDiv);
+        return;
+      }
+      layerInfos.forEach((layer, index) => {
+        const itemDiv = document.createElement("div");
+        itemDiv.textContent = layer.name;
+        itemDiv.title = layer.name + " (" + layer.serviceName + ")";
+        itemDiv.tabIndex = 0;
+        itemDiv.style.outline = "none";
+        itemDiv.addEventListener("click", () => {
+          loadLayer(layer);
+          serviceSearchInput.value = layer.name || "";
+          featureDatasetsMenu.style.display = "none";
+        });
+        itemDiv.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            loadLayer(layer);
+            serviceSearchInput.value = layer.name || "";
+            featureDatasetsMenu.style.display = "none";
+          }
+        });
+        featureDatasetsMenu.appendChild(itemDiv);
+      });
+    }
+
+    // Toggle menu visibility on hamburger click
+    hamburgerMenu.addEventListener("click", () => {
+      if (featureDatasetsMenu.style.display === "block") {
+        featureDatasetsMenu.style.display = "none";
+      } else {
+        populateFeatureDatasetsMenu();
+        featureDatasetsMenu.style.display = "block";
+        // When menu opens, also filter based on current input value
+        const inputVal = serviceSearchInput.value.trim().toLowerCase();
+        if (inputVal.length > 0) {
+          filterFeatureDatasetsMenu(inputVal);
+        }
+      }
+    });
+
+    // Close menu if clicking outside, but not if clicking inside search input or hamburger
+    document.addEventListener("click", (event) => {
+      if (!hamburgerMenu.contains(event.target) && !featureDatasetsMenu.contains(event.target) && !serviceSearchInput.contains(event.target)) {
+        featureDatasetsMenu.style.display = "none";
+      }
+    });
+
+    // Filter feature datasets menu items based on input string
+    function filterFeatureDatasetsMenu(filterText) {
+      const items = featureDatasetsMenu.children;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const text = item.textContent.toLowerCase();
+        if (text.includes(filterText)) {
+          item.style.display = "";
+        } else {
+          item.style.display = "none";
+        }
+      }
+    }
+
+    // Filter feature datasets menu items based on input string
+    function filterFeatureDatasetsMenu(filterText) {
+      const items = featureDatasetsMenu.children;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const text = item.textContent.toLowerCase();
+        if (text.includes(filterText)) {
+          item.style.display = "";
+        } else {
+          item.style.display = "none";
+        }
+      }
+    }
+
+
+
+      let map = new Map({
+        basemap: "streets-vector"
+      });
+
+
+
+      let view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [103.8198, 1.3521], // Center on Singapore
+        zoom: 12 // Adjust zoom level as needed
+      });
+
+      // Add Measurement widget (ruler)
+      const measurement = new Measurement({
+        view: view,
+        container: "measurementDiv"
+      });
+
+      // Add ScaleBar widget
+      const scaleBar = new ScaleBar({
+        view: view,
+        container: "scaleBarDiv",
+        unit: "metric" // or "dual" for metric and imperial
+      });
+      
+      
+      // Combined sublayers list
+      let layerInfos = [];
+      let loadedFeatureLayer = null;
+      let layerView = null;
+      let highlightHandle = null;
+
+
+
+      // Features data for current loaded layer for feature search
+      let featureSearchData = [];
+      // Suitable field name (string) to display & search by in feature search
+      let featureSearchField = null;
+
+
+
+      // Elements for service layer search
+      const serviceSearchInput = document.getElementById("serviceSearchInput");
+      const serviceSuggestions = document.getElementById("serviceSuggestions");
+      let serviceSelectedIndex = -1;
+
+
+
+      // Elements for feature data search
+      const featureSearchBlock = document.getElementById("featureSearchBlock");
+      const featureSearchInput = document.getElementById("featureSearchInput");
+      const featureSuggestions = document.getElementById("featureSuggestions");
+      let featureSelectedIndex = -1;
+
+
+
+      // Fetch all service metadata for sublayers
+      Promise.all(serviceUrls.map(url =>
+        fetch(url + "?f=json")
+          .then(response => response.json())
+          .then(serviceJson => {
+            if (serviceJson.error) throw new Error(serviceJson.error.message);
+            const serviceName = serviceJson.serviceDescription;
+            return (serviceJson.layers || []).map(layer => ({
+              id: layer.id,
+              name: layer.name || ("Layer " + layer.id),
+              url: url + "/" + layer.id,
+              serviceUrl: url,
+              serviceName: serviceName
+            }));
+          })
+          .catch(err => {
+            console.error(`Failed to load metadata from ${url}`, err);
+            return [];
+          })
+      )).then(results => {
+        layerInfos = results.flat();
+        if (layerInfos.length === 0) {
+          alert("No feature layers found in the specified services.");
+        }
+        initServiceSearch();
+      });
+
+
+
+      function initServiceSearch() {
+        serviceSearchInput.addEventListener("input", onServiceInput);
+        serviceSearchInput.addEventListener("keydown", onServiceKeyDown);
+        document.addEventListener("click", onDocumentClick);
+      }
+
+
+
+      // --- Service Search ---
+
+
+
+    function onServiceInput(e) {
+      const input = e.target.value.trim().toLowerCase();
+      if (input.length === 0) {
+        clearServiceSuggestions();
+        hideServiceSuggestions();
+        // Also reset feature datasets menu to full list if open
+        if (featureDatasetsMenu.style.display === "block") {
+          populateFeatureDatasetsMenu();
+        }
+        return;
+      }
+      if (featureDatasetsMenu.style.display === "block") {
+        // When menu is open, only filter the menu items and hide service suggestions
+        filterFeatureDatasetsMenu(input);
+        clearServiceSuggestions();
+        hideServiceSuggestions();
+      } else {
+        // When menu is closed, show service suggestions as search results
+        const filtered = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
+        renderServiceSuggestions(filtered);
+      }
+    }
+
+
+
+      function renderServiceSuggestions(layers) {
+        clearServiceSuggestions();
+        if (layers.length === 0) {
+          hideServiceSuggestions();
+          return;
+        }
+        layers.forEach((layer, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.layerId = layer.id;
+          div.dataset.serviceUrl = layer.serviceUrl;
+          div.textContent = layer.name;
+
+
+
+          const serviceSpan = document.createElement("span");
+          serviceSpan.className = "service-name";
+          div.appendChild(serviceSpan);
+
+
+
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault(); // Prevent input blur
+            selectServiceSuggestion(idx);
+            loadLayer(layer);
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+          });
+
+
+
+          serviceSuggestions.appendChild(div);
+        });
+        serviceSelectedIndex = -1;
+        showServiceSuggestions();
+      }
+
+
+
+      function clearServiceSuggestions() {
+        while (serviceSuggestions.firstChild) {
+          serviceSuggestions.firstChild.remove();
+        }
+      }
+
+
+
+      function showServiceSuggestions() {
+        serviceSuggestions.style.display = "block";
+      }
+
+
+
+      function hideServiceSuggestions() {
+        serviceSuggestions.style.display = "none";
+      }
+
+
+
+      function onServiceKeyDown(e) {
+        const items = serviceSuggestions.children;
+        if (!items.length) return;
+
+
+
+        switch (e.key) {
+          case "ArrowDown":
+            e.preventDefault();
+            if (serviceSelectedIndex < items.length - 1) {
+              serviceSelectedIndex++;
+              updateServiceSuggestionHighlight();
+            }
+            break;
+          case "ArrowUp":
+            e.preventDefault();
+            if (serviceSelectedIndex > 0) {
+              serviceSelectedIndex--;
+              updateServiceSuggestionHighlight();
+            }
+            break;
+          case "Enter":
+            e.preventDefault();
+            if (serviceSelectedIndex >= 0 && serviceSelectedIndex < items.length) {
+              items[serviceSelectedIndex].dispatchEvent(new Event("mousedown"));
+            } else {
+              const inputVal = serviceSearchInput.value.trim().toLowerCase();
+              const matchLayer = layerInfos.find(l => l.name.toLowerCase() === inputVal);
+              if (matchLayer) {
+                loadLayer(matchLayer);
+              }
+              clearServiceSuggestions();
+              hideServiceSuggestions();
+            }
+            break;
+          case "Escape":
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+            break;
+        }
+      }
+
+
+
+      function updateServiceSuggestionHighlight() {
+        const items = serviceSuggestions.children;
+        for (let i = 0; i < items.length; i++) {
+          if (i === serviceSelectedIndex) {
+            items[i].classList.add("selected");
+            items[i].setAttribute("aria-selected", "true");
+          } else {
+            items[i].classList.remove("selected");
+            items[i].setAttribute("aria-selected", "false");
+          }
+        }
+      }
+
+
+
+      function selectServiceSuggestion(index) {
+        const items = serviceSuggestions.children;
+        if (index >= 0 && index < items.length) {
+          serviceSelectedIndex = index;
+          updateServiceSuggestionHighlight();
+          serviceSearchInput.value = items[index].textContent.trim();
+        }
+      }
+
+
+
+      // --- Feature Layer Loaded & Feature Search ---
+
+
+
+      // Load feature layer and initialize feature search data
+      function loadLayer(layerInfo) {
+        if (!layerInfo) return;
+
+
+
+        if (loadedFeatureLayer) {
+          map.remove(loadedFeatureLayer);
+          loadedFeatureLayer = null;
+          if (highlightHandle) {
+            highlightHandle.remove();
+            highlightHandle = null;
+          }
+          view.popup.close();
+        }
+
+
+
+        // Hide feature search while loading new layer
+        hideFeatureSearch();
+
+
+
+        loadedFeatureLayer = new FeatureLayer({
+          url: layerInfo.url,
+          outFields: ["*"],
+          popupTemplate: {
+            title: "{Name}",
+            content: function(feature) {
+              const attrs = feature.graphic.attributes;
+              let contentHtml = "<table style='width: 100%;border-collapse: collapse;'>";
+              for (const key in attrs) {
+                if (attrs.hasOwnProperty(key)) {
+                  contentHtml += "<tr><td style='font-weight: bold; border: 1px solid #ddd; padding:4px;'>" +
+                                  key + "</td><td style='border: 1px solid #ddd; padding:4px;'>" +
+                                  attrs[key] + "</td></tr>";
+                }
+              }
+              contentHtml += "</table>";
+              return contentHtml;
+            }
+          }
+        });
+
+
+
+        map.add(loadedFeatureLayer);
+
+
+
+        view.whenLayerView(loadedFeatureLayer).then(lv => {
+          layerView = lv;
+          // Query features for feature search
+          queryFeaturesForSearch(loadedFeatureLayer).then(() => {
+            // Show feature search input once data ready
+            showFeatureSearch();
+          }).catch(err => {
+            console.warn("Failed to query features for search:", err);
+            // Still show feature search but will be empty
+            featureSearchData = [];
+            showFeatureSearch();
+          });
+
+
+
+          if (view.popup && typeof view.popup.close === "function") {
+            view.popup.close();
+          }
+          if (highlightHandle) {
+            highlightHandle.remove();
+            highlightHandle = null;
+          }
+
+
+
+          // Remove previous click handlers if any
+          if (view._clickHandler) {
+            view._clickHandler.remove();
+          }
+
+
+
+          view._clickHandler = view.on("click", event => {
+            event.preventDefault(); // Prevent default behavior that may cause a boundary to appear
+            if (!layerView) return;
+            view.hitTest(event).then(response => {
+              const results = response.results.filter(r => r.graphic.layer === loadedFeatureLayer);
+              if (results.length) {
+                const feature = results[0].graphic;
+                if (highlightHandle) {
+                  highlightHandle.remove();
+                }
+                highlightHandle = layerView.highlight(feature);
+                view.popup.open({
+                  features: [feature],
+                  location: feature.geometry.centroid || feature.geometry.extent.center || event.mapPoint
+                });
+              } else {
+                if (highlightHandle) {
+                  highlightHandle.remove();
+                  highlightHandle = null;
+                }
+                view.popup.close();
+              }
+            });
+          });
+        });
+      }
+
+
+
+      // Query features from loaded layer for feature search
+      // Limits to max 2000 features for performance
+      async function queryFeaturesForSearch(featureLayer) {
+        featureSearchData = [];
+        featureSearchField = null;
+
+
+
+        const query = featureLayer.createQuery();
+
+
+
+        // Create a buffer around the current view extent
+        const bufferDistance = 500; // Set buffer distance in meters (adjust as needed)
+        const bufferedGeometry = geometryEngine.buffer(view.extent, bufferDistance, "meters");
+
+
+
+        query.geometry = bufferedGeometry; // Set the geometry to the buffered area
+        query.outFields = ["*"];
+        query.returnGeometry = true; // we just want fields initially
+        query.orderByFields = []; // no order
+        query.num = 2000; // Increase the limit to 2000 or more as needed
+
+
+
+        const results = await featureLayer.queryFeatures(query);
+
+
+
+        if (!results.features.length) {
+            return;
+        }
+
+
+
+        featureSearchData = results.features;
+
+
+        // Validate if "Name" field exists and is of type 'string'
+        const fields = featureLayer.fields;
+        let preferredField = ["Name", "NAME", "name","name_en"].find(fldName =>
+          fields.some(fld => fld.name === fldName && fld.type === "string"));
+        if (!preferredField) {
+          // find first string field which is not objectid or geometry
+          const stringField = fields.find(fld =>
+            fld.type === "string" &&
+            !/^OBJECTID$|^FID$|^Shape/i.test(fld.name));
+          preferredField = stringField ? stringField.name : fields[0].name;
+        }
+        featureSearchField = preferredField;
+      }
+
+
+
+      // Show/hide feature search input block
+      function showFeatureSearch() {
+        featureSearchBlock.style.display = "block";
+        featureSearchInput.value = "";
+        clearFeatureSuggestions();
+      }
+      function hideFeatureSearch() {
+        featureSearchBlock.style.display = "none";
+        clearFeatureSuggestions();
+      }
+
+
+
+      // --- Feature Search handlers ---
+
+
+
+      featureSearchInput.addEventListener("input", onFeatureInput);
+      featureSearchInput.addEventListener("keydown", onFeatureKeyDown);
+
+
+
+      function onFeatureInput(e) {
+        const input = e.target.value.trim().toLowerCase();
+        if (!input || featureSearchData.length === 0) {
+            clearFeatureSuggestions();
+            hideFeatureSuggestions();
+            return;
+        }
+
+
+
+        // Define the fields to search across, including the default field
+        const searchFields = [featureSearchField, "addr_city", "addr_country", "addr_postcode", "amenity"]; // Add more fields as needed
+
+
+
+        // Validate that the fields are available in the feature data
+        const validSearchFields = searchFields.filter(field => {
+            return featureSearchData[0].attributes.hasOwnProperty(field); // Check if the field exists in the first feature's attributes
+        });
+
+
+
+        // Filter features by checking if any of the valid specified fields contain the input substring
+        const filtered = featureSearchData.filter(f => {
+            return validSearchFields.some(field => {
+                const val = f.attributes[field];
+                return val && val.toString().toLowerCase().includes(input);
+            });
+        });
+
+
+
+        renderFeatureSuggestions(filtered);
+      }
+
+
+
+      function renderFeatureSuggestions(features) {
+        clearFeatureSuggestions();
+        if (features.length === 0) {
+          hideFeatureSuggestions();
+          return;
+        }
+        features.forEach((feature, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.featureIndex = idx;
+          div.textContent = feature.attributes[featureSearchField] || "(no value)";
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault();
+            selectFeatureSuggestion(idx);
+            featureSearchInput.value = feature.attributes[featureSearchField] || "";
+            zoomToFeature(feature);
+            clearFeatureSuggestions();
+            hideFeatureSuggestions();
+          });
+          featureSuggestions.appendChild(div);
+        });
+        featureSelectedIndex = -1;
+        showFeatureSuggestions();
+      }
+
+
+
+      function clearFeatureSuggestions() {
+        while (featureSuggestions.firstChild) {
+          featureSuggestions.firstChild.remove();
+        }
+      }
+
+
+
+      function showFeatureSuggestions() {
+        featureSuggestions.style.display = "block";
+      }
+      function hideFeatureSuggestions() {
+        featureSuggestions.style.display = "none";
+      }
+
+
+
+      function onFeatureKeyDown(e) {
+        const items = featureSuggestions.children;
+        if (!items.length) return;
+
+
+
+        switch (e.key) {
+          case "ArrowDown":
+            e.preventDefault();
+            if (featureSelectedIndex < items.length - 1) {
+              featureSelectedIndex++;
+              updateFeatureSuggestionHighlight();
+            }
+            break;
+          case "ArrowUp":
+            e.preventDefault();
+            if (featureSelectedIndex > 0) {
+              featureSelectedIndex--;
+              updateFeatureSuggestionHighlight();
+            }
+            break;
+          case "Enter":
+            e.preventDefault();
+            if (featureSelectedIndex >= 0 && featureSelectedIndex < items.length) {
+              items[featureSelectedIndex].dispatchEvent(new Event("mousedown"));
+              featureSearchInput.value = items[featureSelectedIndex].textContent || "";
+              clearFeatureSuggestions();
+              hideFeatureSuggestions();
+            } else {
+              const inputVal = featureSearchInput.value.trim().toLowerCase();
+              const matchFeature = featureSearchData.find(f => {
+                const val = f.attributes[featureSearchField];
+                return val && val.toString().toLowerCase() === inputVal;
+              });
+              if (matchFeature) {
+                zoomToFeature(matchFeature);
+              }
+              clearFeatureSuggestions();
+              hideFeatureSuggestions();
+            }
+            break;
+          case "Escape":
+            clearFeatureSuggestions();
+            hideFeatureSuggestions();
+            break;
+        }
+      }
+
+
+
+      function updateFeatureSuggestionHighlight() {
+        const items = featureSuggestions.children;
+        for (let i = 0; i < items.length; i++) {
+          if (i === featureSelectedIndex) {
+            items[i].classList.add("selected");
+            items[i].setAttribute("aria-selected", "true");
+          } else {
+            items[i].classList.remove("selected");
+            items[i].setAttribute("aria-selected", "false");
+          }
+        }
+      }
+
+
+
+      function selectFeatureSuggestion(index) {
+        const items = featureSuggestions.children;
+        if (index >= 0 && index < items.length) {
+          featureSelectedIndex = index;
+          updateFeatureSuggestionHighlight();
+          featureSearchInput.value = items[index].textContent.trim();
+        }
+      }
+
+
+
+      // Zoom to feature geometry and highlight it, open popup
+      function zoomToFeature(feature) {
+        if (!feature || !layerView) return;
+
+
+
+        // Remove previous highlight and popup
+        if (highlightHandle) {
+          highlightHandle.remove();
+          highlightHandle = null;
+        }
+        if (view.popup && typeof view.popup.close === "function") {
+          view.popup.close();
+        }
+
+
+
+        // Center and zoom on feature geometry
+        let geom = feature.geometry;
+        if (geom.type === "point") {
+          view.goTo({target: geom, zoom: Math.max(view.zoom, 14)});
+        } else if (geom.extent) {
+          // zoom to extent with padding
+          view.goTo(geom.extent.expand(1.5));
+        } else {
+          view.goTo(geom);
+        }
+
+
+
+        // Highlight feature
+        highlightHandle = layerView.highlight(feature);
+
+
+
+        // Open popup on feature location
+        view.popup.open({
+          features: [feature],
+          location: geom.type === "point" ? geom : geom.extent ? geom.extent.center : view.center
+        });
+      }
+
+
+
+      // Close suggestions if click outside inputs or suggestions containers
+      document.addEventListener("click", evt => {
+        if (!serviceSearchInput.contains(evt.target) && !serviceSuggestions.contains(evt.target)) {
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+        }
+        if (!featureSearchInput.contains(evt.target) && !featureSuggestions.contains(evt.target)) {
+          clearFeatureSuggestions();
+          hideFeatureSuggestions();
+        }
+      });
+
+
+
+      // Add an event listener for extent changes
+      view.watch("extent", function(newExtent) {
+        // Call the queryFeaturesForSearch function with the updated extent/
+		//console.log(view.extent);
+		
+        queryFeaturesForSearch(loadedFeatureLayer);
+      });
+	  
+	  // view.watch("extent", function(newExtent) {
+		// console.log(view.extent)
+	  // });
+    });
+  </script>
+</body>
+</html>

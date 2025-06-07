@@ -107,7 +107,78 @@
       margin-left: 8px;
     }
 
+/* Basemap Selector Styles */
+    #basemapContainer {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 98;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 200px;
+    }
 
+    #basemapToggle {
+      background: #0079c1;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    #basemapToggle:hover {
+      background: #005a8b;
+    }
+
+    #basemapOptions {
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .basemap-option {
+      background: none;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      text-align: left;
+      border-radius: 3px;
+      font-size: 13px;
+      transition: background-color 0.2s;
+    }
+
+    .basemap-option:hover {
+      background-color: #f0f0f0;
+    }
+
+    .basemap-option.active {
+      background-color: #e3f2fd;
+      font-weight: bold;
+      color: #0079c1;
+    }
+
+    /* Arrow icon for dropdown */
+    .dropdown-arrow {
+      transition: transform 0.2s;
+    }
+
+    .dropdown-arrow.open {
+      transform: rotate(180deg);
+    }
 
     /* Media Queries for Mobile Responsiveness */
     @media (max-width: 600px) {
@@ -119,6 +190,7 @@
         transform: translateX(-50%);
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       }
+
 
       #featureDatasetsMenu {
         max-height: 150px;
@@ -164,24 +236,61 @@
         stroke-width: 3;
       }
     }
+
+    /* Standard mobile portrait mode */
+    @media (max-width: 600px) and (orientation: portrait) {
+      #basemapContainer {
+        top: 10%;
+        right: 8px;
+        padding: 6px;
+        min-width: 100px;
+        max-width: 140px;
+      }
+
+      
+    }
+
+    /* Extra small screens */
+    @media (max-width: 480px) {
+      #basemapContainer {
+        top: 15%;
+        right: 8px;
+        padding: 6px;
+        min-width: 80px;
+        max-width: 120px;
+      }
+
+      #basemapToggle {
+        font-size: 10px;
+        padding: 5px 6px;
+      }
+
+      .basemap-option {
+        font-size: 10px;
+        padding: 5px 6px;
+      }
+    }
+
+   
   </style>
 </head>
 <body>
   <div id="searchContainer">
-    <div id="searchTopRow" style="display:flex; align-items:center; gap:8px;">
-      <button id="hamburgerMenu" aria-label="Toggle feature datasets menu" title="Feature Datasets Menu" style="background:none; border:none; cursor:pointer; padding:0; margin-right:8px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="3" y1="18" x2="21" y2="18"></line>
-        </svg>
-      </button>
-      <div class="search-block" id="serviceSearchBlock" style="flex-grow: 1;">
-        <label for="serviceSearchInput" style="display:none;">Search layers across services</label>
-        <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
-        <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
+      <div id="searchTopRow" style="display:flex; align-items:center; gap:8px;">
+        <button id="hamburgerMenu" aria-label="Toggle feature datasets menu" title="Feature Datasets Menu" style="background:none; border:none; cursor:pointer; padding:0; margin-right:8px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="search-block" id="serviceSearchBlock" style="flex-grow: 1;">
+          <label for="serviceSearchInput" style="display:none;">Search layers across services</label>
+          <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
+          <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
+        </div>
+        <button id="toggleViewBtn" style="margin-left: 8px; padding: 6px 12px; font-size: 14px; cursor: pointer;">Switch to 2D</button>
       </div>
-    </div>
     <div id="featureDatasetsMenu" class="feature-datasets-menu" style="display:none; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin-bottom: 8px; padding: 4px 0; z-index: 1001; position: relative;">
       <!-- Feature datasets will be populated here -->
     </div>
@@ -191,6 +300,20 @@
       <div id="featureSuggestions" class="suggestions" role="listbox"></div>
     </div>
   </div>
+
+  <!-- Basemap Selector -->
+  <div id="basemapContainer">
+    <button id="basemapToggle" aria-label="Select basemap" title="Change Basemap">
+      <span id="currentBasemapName">Streets</span>
+      <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6,9 12,15 18,9"></polyline>
+      </svg>
+    </button>
+    <div id="basemapOptions">
+      <!-- Basemap options will be populated here -->
+    </div>
+  </div>
+
   <div id="viewDiv"></div>
   <!-- <div id="measurementDiv" style="position:absolute; top:12px; right:12px; z-index: 100; background:white; padding:8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div> -->
   <div id="scaleBarDiv" style="position:absolute; bottom:12px; left:12px; z-index: 100; background:white; padding:4px 8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
@@ -200,14 +323,164 @@
   <script>
     require([
       "esri/Map",
+      "esri/WebScene",
       "esri/views/MapView",
+      "esri/views/SceneView",
       "esri/layers/FeatureLayer",
+      "esri/layers/SceneLayer",
+      "esri/layers/VectorTileLayer",
       "esri/geometry/geometryEngine",
       "esri/widgets/Measurement",
-      "esri/widgets/ScaleBar"
-    ], function(Map, MapView, FeatureLayer, geometryEngine, Measurement, ScaleBar) {
+      "esri/widgets/ScaleBar",
+      "esri/time/TimeExtent",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/symbols/PointSymbol3D",
+      "esri/symbols/ObjectSymbol3DLayer",
+      "esri/layers/GeoJSONLayer",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/renderers/SimpleRenderer"
+      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, GeoJSONLayer, SimpleMarkerSymbol, SimpleRenderer) {
+ 
+      // 1. Updated basemap configurations (replace the existing basemapConfigs array)
+      const basemapConfigs = [
+        { id: "streets", name: "Streets", type: "esri" },
+        { id: "satellite", name: "Satellite", type: "esri" },
+        { id: "hybrid", name: "Hybrid", type: "esri" },
+        { id: "topo", name: "Topographic", type: "esri" },
+        { id: "gray", name: "Light Gray", type: "esri" },
+        { id: "dark-gray", name: "Dark Gray", type: "esri" },
+        { id: "oceans", name: "Oceans", type: "esri" },
+        { id: "osm", name: "OpenStreetMap", type: "esri" },
+        { id: "terrain", name: "Terrain", type: "esri" },
+        { id: "national-geographic", name: "National Geographic", type: "esri" },
+        { id: "streets-night", name: "Streets (Night)", type: "esri" },
+        { id: "streets-navigation", name: "Streets Navigation", type: "esri" },
+        // Vector Tile options
+        { 
+          id: "streets-vector", 
+          name: "Streets Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "topo-vector", 
+          name: "Topographic Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "gray-vector", 
+          name: "Light Gray Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "dark-gray-vector", 
+          name: "Dark Gray Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "streets-navigation-vector", 
+          name: "Streets Navigation Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "streets-night-vector", 
+          name: "Streets Night Vector", 
+          type: "esri" 
+        },
+        // Custom Vector Tile Layer
+        { 
+          id: "custom-vector", 
+          name: "Custom Vector Tiles", 
+          type: "vector-tile",
+          url: "https://basemaps.arcgis.com/arcgis/rest/services/OpenBasemap_v2/VectorTileServer"
+        }
+      ];
 
+      let currentBasemapId = "streets";
 
+      // Basemap UI Elements
+      const basemapToggle = document.getElementById("basemapToggle");
+      const basemapOptions = document.getElementById("basemapOptions");
+      const currentBasemapName = document.getElementById("currentBasemapName");
+      const dropdownArrow = basemapToggle.querySelector(".dropdown-arrow");
+
+      // Populate basemap options
+      function populateBasemapOptions() {
+        basemapOptions.innerHTML = "";
+        basemapConfigs.forEach(config => {
+          const button = document.createElement("button");
+          button.className = "basemap-option";
+          button.textContent = config.name;
+          button.setAttribute("data-basemap-id", config.id);
+          
+          if (config.id === currentBasemapId) {
+            button.classList.add("active");
+          }
+          
+          button.addEventListener("click", () => {
+            changeBasemap(config.id, config.name);
+            toggleBasemapDropdown(false);
+          });
+          
+          basemapOptions.appendChild(button);
+        });
+      }
+
+      // Toggle basemap dropdown
+      function toggleBasemapDropdown(show) {
+        const isOpen = show !== undefined ? show : basemapOptions.style.display === "none";
+        basemapOptions.style.display = isOpen ? "flex" : "none";
+        dropdownArrow.classList.toggle("open", isOpen);
+      }
+
+      // 2. Updated changeBasemap function (replace the existing changeBasemap function)
+      function changeBasemap(basemapId, basemapName) {
+        currentBasemapId = basemapId;
+        currentBasemapName.textContent = basemapName;
+        
+        // Find the basemap config
+        const basemapConfig = basemapConfigs.find(config => config.id === basemapId);
+        
+        if (basemapConfig && basemapConfig.type === "vector-tile") {
+          // Handle custom vector tile layer
+          const vectorTileLayer = new VectorTileLayer({
+            url: basemapConfig.url
+          });
+          
+          // Create a new basemap with the vector tile layer
+          const customBasemap = {
+            baseLayers: [vectorTileLayer]
+          };
+          
+          scene.basemap = customBasemap;
+        } else {
+          // Handle standard Esri basemaps
+          scene.basemap = basemapId;
+        }
+        
+        // Update active states in dropdown
+        const options = basemapOptions.querySelectorAll(".basemap-option");
+        options.forEach(option => {
+          option.classList.toggle("active", option.getAttribute("data-basemap-id") === basemapId);
+        });
+      }
+
+      // Basemap toggle event listener
+      basemapToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleBasemapDropdown();
+      });
+
+      // Close basemap dropdown when clicking outside
+      document.addEventListener("click", (e) => {
+        if (!basemapToggle.contains(e.target) && !basemapOptions.contains(e.target)) {
+          toggleBasemapDropdown(false);
+        }
+      });
+
+      // Initialize basemap options
+      populateBasemapOptions();
+      
 
       // List of Feature Layer Service URLs to search through
       const serviceUrls = [
@@ -223,9 +496,18 @@
         "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Highways/FeatureServer"
     ];
 
+    // const geocodeServiceUrl = "https://nominatim.openstreetmap.org/search";
+    // const geocodeServiceUrl = "https://api.mapbox.com/search/geocode/v6/forward";
+    const geocodeServiceUrl = "https://api.mapbox.com/search/searchbox/v1/suggest"
+    const geocodeRetrieveUrl = "https://api.mapbox.com/search/searchbox/v1/retrieve"
+    const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiZ3NyMTciLCJhIjoiY21ia3hudTA1MGx1bzJqcXY5bGc3ZXI1ZCJ9.XahvXYmDAts7i3YVd2KoQg"; // Replace with your actual token
+
     // New code for hamburger menu functionality
     const hamburgerMenu = document.getElementById("hamburgerMenu");
     const featureDatasetsMenu = document.getElementById("featureDatasetsMenu");
+    let userLocation = {};
+    let addressSearchData = [];
+    let isSearchingAddresses = false;
 
     // Populate the feature datasets menu with layerInfos
     function populateFeatureDatasetsMenu() {
@@ -310,25 +592,366 @@
       }
     }
 
-
-
-      let map = new Map({
-        basemap: "streets-vector"
+      
+      // Create a WebScene with a basemap
+      const scene = new WebScene({
+        // layers: [vectorTileLayer],
+        basemap: "streets", // Add a basemap for context
+        ground: "world-elevation" // Add elevation for 3D terrain
       });
 
+      const layer = new SceneLayer({
+        // URL to the service
+        url: "https://basemaps3d.arcgis.com/arcgis/rest/services/Esri3D_Buildings_v1/SceneServer/layers/0"
+      });
+
+      scene.add(layer)
+      // Removed unused map variable
+      // let map = new Map({
+      //   basemap: "streets-vector"
+      // });
 
 
-      let view = new MapView({
+
+      // let view = new MapView({
+      let view = new SceneView({
         container: "viewDiv",
-        map: map,
-        center: [103.8198, 1.3521], // Center on Singapore
-        zoom: 12 // Adjust zoom level as needed
+        map: scene,
+        camera: {
+            position: {
+                x: 103.8198, // Longitude
+                y: 1.3521,   // Latitude
+                z: 5000      // Camera height in meters
+            },
+            tilt: 45, // Tilt angle
+            heading: 0
+        }, // Heading angle
+        padding: {
+          top: 40
+        }
       });
 
-      // Add Measurement widget (ruler)
-      const measurement = new Measurement({
-        view: view,
-        container: "measurementDiv"
+      // Create a MapView for 2D
+      let mapView = new MapView({
+        container: null, // Initially not attached
+        map: scene,
+        center: [103.8198, 1.3521],
+        zoom: 12,
+        padding: {
+          top: 40
+        }
+      });
+
+      // Current active view
+      let activeView = view;
+
+      // Toggle button event listener
+      const toggleViewBtn = document.getElementById("toggleViewBtn");
+      toggleViewBtn.addEventListener("click", () => {
+        if (activeView === view) {
+          // Switch to 2D MapView
+          // Sync center and zoom from 3D view to 2D view
+          mapView.center = view.center;
+          mapView.zoom = view.zoom;
+          view.container = null;
+          mapView.container = "viewDiv";
+          activeView = mapView;
+          toggleViewBtn.textContent = "Switch to 3D";
+
+          // Update extent watch for activeView change
+          if (extentWatchHandle) {
+            extentWatchHandle.remove();
+          }
+          extentWatchHandle = activeView.watch("extent", function(newExtent) {
+            debouncedQueryFeaturesForSearch();
+          });
+        } else {
+          // Switch to 3D SceneView
+          // Sync center and zoom from 2D view to 3D view
+          view.center = mapView.center;
+          view.zoom = mapView.zoom;
+          mapView.container = null;
+          view.container = "viewDiv";
+          activeView = view;
+          toggleViewBtn.textContent = "Switch to 2D";
+
+          // Update extent watch for activeView change
+          if (extentWatchHandle) {
+            extentWatchHandle.remove();
+          }
+          extentWatchHandle = activeView.watch("extent", function(newExtent) {
+            debouncedQueryFeaturesForSearch();
+          });
+        }
+      });
+
+      view.when(function() {
+        view.environment.lighting = {
+            date: new Date('2023-10-01T12:00:00+08:00'), // Set to noon in Singapore time
+            directShadowsEnabled: false, // Disabled shadows for performance
+            ambientOcclusionEnabled: false, // Disabled ambient occlusion for performance
+            illumination: "day", // Set to day
+            sun: {
+                azimuth: 180, // Sun's azimuth angle (degrees)
+                altitude: 45   // Sun's altitude angle (degrees)
+            }
+        };
+
+      // Zoom to current location if GPS is available
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            userLocation = {
+              longitude: position.coords.longitude,
+              latitude: position.coords.latitude
+            };
+
+            // Create a point geometry for the user's location on the ground
+            const groundPoint = new Point({
+              longitude: userLocation.longitude,
+              latitude: userLocation.latitude,
+              z: 0
+            });
+
+            // Define height for the vertical line and marker offset
+            const lineHeight = 100;
+
+            // Create a point geometry for the top of the vertical line (above buildings)
+            const topPoint = new Point({
+              longitude: userLocation.longitude,
+              latitude: userLocation.latitude,
+              z: lineHeight
+            });
+
+            const userPoint2D = new Point({
+              longitude: userLocation.longitude,
+              latitude: userLocation.latitude,
+            });
+
+
+            // Create a polyline geometry for the vertical line from ground to topPoint
+            const verticalLine = {
+              type: "polyline",
+              paths: [
+                [groundPoint.longitude, groundPoint.latitude, groundPoint.z],
+                [topPoint.longitude, topPoint.latitude, topPoint.z]
+              ],
+              spatialReference: { wkid: 4326 }
+            };
+
+            // Create a simple line symbol for the vertical line
+            const lineSymbol = {
+              type: "line-3d",
+              symbolLayers: [{
+                type: "line",
+                material: { color: "orange" },
+                size: 2
+              }]
+            };
+
+            // Create a graphic for the vertical line
+            const lineGraphic = new Graphic({
+              geometry: verticalLine,
+              symbol: lineSymbol
+            });
+
+            // Create a picture marker symbol for the user location at the top of the line
+            const markerSymbol = {
+              type: "picture-marker",
+              url: "https://static.arcgis.com/images/Symbols/Shapes/BluePin1LargeB.png",
+              width: "32px",
+              height: "32px",
+              // Optional: offset the marker vertically so it sits above the line end
+              yoffset: 16
+            };
+
+            // Create a graphic for the user marker at the topPoint
+            const userGraphic = new Graphic({
+              geometry: topPoint,
+              symbol: markerSymbol
+            });
+
+            const user2DGraphic = new Graphic({
+              geometry: userPoint2D,
+              symbol: markerSymbol
+            });
+
+            // Add the line and marker graphics to the view
+            view.graphics.addMany([lineGraphic, userGraphic]);
+            mapView.graphics.addMany([user2DGraphic]);
+
+            // Zoom to the user's location at zoom 17
+            view.goTo({
+              target: [userLocation.longitude, userLocation.latitude],
+              zoom: 17
+            }).catch(function(error) {
+              console.error("Error zooming to user location:", error);
+            });
+          },
+          function(error) {
+            console.warn("Geolocation error:", error.message);
+            // Keep default view if error or permission denied
+          }
+        );
+      } else {
+        console.warn("Geolocation is not supported by this browser.");
+      }
+      });
+
+      // Debounce function to limit frequency of calls
+      function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+          clearTimeout(timeout);
+          return new Promise((resolve) => {
+            timeout = setTimeout(() => resolve(func.apply(this, args)), wait);
+          });
+        };
+      }
+
+      function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      }
+
+      const uuid = generateUUID();
+
+      let currentRequestId = 0;
+      let currentAbortController = null;
+
+      const debouncedAddressSearch = debounce(async (searchText, requestId) => {
+        if (searchText.length < 3) {
+          return [];
+        }
+
+        if (currentAbortController) {
+          currentAbortController.abort();
+        }
+        currentAbortController = new AbortController();
+        const signal = currentAbortController.signal;
+
+        try {
+          isSearchingAddresses = true;
+
+          // Build Mapbox Geocoding API query URL
+          const encodedQuery = encodeURIComponent(searchText);
+          const params = new URLSearchParams({
+            q: searchText,
+            access_token: MAPBOX_ACCESS_TOKEN,
+            country: 'SG', // Focus on Singapore
+            limit: '10',
+            types: 'poi', // Include addresses, points of interest, and places
+            session_token: uuid
+          });
+
+          const response = await fetch(`${geocodeServiceUrl}?${params}`, { signal });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          // console.log('Raw Mapbox data:', data);
+
+          if (!data.suggestions || !Array.isArray(data.suggestions)) {
+            console.warn('No suggestions found in response');
+            return [];
+          }
+
+          const transformedResults = data.suggestions.map(item => {
+            const context = item.context || {};
+
+            return {
+              address: item.full_address || item.name || 'Unknown location',
+              location: {
+                x: null,
+                y: null,
+                longitude: null,
+                latitude: null,
+                spatialReference: { wkid: 4326 }
+              },
+              score: 100,
+              attributes: {
+                City: context.place?.name || 'Singapore',
+                Region: context.place?.name || '',
+                Country: context.country?.name || 'Singapore',
+                PostalCode: context.postcode?.name || '',
+                MapboxId: item.mapbox_id,
+                FeatureType: item.feature_type,
+                Category: item.poi_category?.join(', ') || '',
+                Name: item.name,
+                Address: item.address
+              }
+            };
+          }).filter(Boolean);
+
+          // console.log('Final transformed results:', transformedResults);
+          return { results: transformedResults, requestId };
+
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            console.log('Fetch aborted for requestId:', requestId);
+          } else {
+            console.error("Address search error:", error);
+          }
+          return { results: [], requestId };
+        } finally {
+          isSearchingAddresses = false;
+        }
+      }, 300);
+
+      function onServiceInput(e) {
+        const input = e.target.value.trim().toLowerCase();
+        if (input.length === 0) {
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+          addressSearchData = [];
+          if (featureDatasetsMenu.style.display === "block") {
+            populateFeatureDatasetsMenu();
+          }
+          return;
+        }
+
+        if (featureDatasetsMenu.style.display === "block") {
+          filterFeatureDatasetsMenu(input);
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+        } else {
+          const filteredLayers = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
+          if (input.length >= 3) {
+            currentRequestId++;
+            const requestId = currentRequestId;
+            debouncedAddressSearch(input, requestId).then(({ results, requestId: resId }) => {
+              if (resId === currentRequestId) {
+                addressSearchData = results.results;
+                console.log(addressSearchData);
+                renderCombinedSuggestions(results, filteredLayers);
+              } else {
+                console.log('Discarding stale response for requestId:', resId);
+              }
+            });
+          } else {
+            addressSearchData = [];
+            renderCombinedSuggestions(filteredLayers, []);
+          }
+        }
+      }
+
+      
+
+
+      // Lazy load Measurement widget after view is ready
+      let measurement;
+      view.when(() => {
+        setTimeout(() => {
+          measurement = new Measurement({
+            view: view,
+            container: "measurementDiv"
+          });
+        }, 2000); // Delay 2 seconds to reduce initial load
       });
 
       // Add ScaleBar widget
@@ -337,7 +960,23 @@
         container: "scaleBarDiv",
         unit: "metric" // or "dual" for metric and imperial
       });
-      
+
+      // Create a div to display current center location and zoom level
+      const locationInfoDiv = document.createElement("div");
+      locationInfoDiv.style.position = "absolute";
+      locationInfoDiv.style.bottom = "12px";
+      locationInfoDiv.style.right = "12px";
+      locationInfoDiv.style.zIndex = "101";
+      locationInfoDiv.style.backgroundColor = "rgba(255, 255, 255, 0.8)";
+      locationInfoDiv.style.padding = "6px 10px";
+      locationInfoDiv.style.borderRadius = "6px";
+      locationInfoDiv.style.fontSize = "14px";
+      locationInfoDiv.style.fontFamily = "Arial, sans-serif";
+      locationInfoDiv.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+      locationInfoDiv.style.userSelect = "none";
+      locationInfoDiv.textContent = "Loading location...";
+      view.container.appendChild(locationInfoDiv);
+
       
       // Combined sublayers list
       let layerInfos = [];
@@ -409,30 +1048,42 @@
       // --- Service Search ---
 
 
-
-    function onServiceInput(e) {
-      const input = e.target.value.trim().toLowerCase();
-      if (input.length === 0) {
-        clearServiceSuggestions();
-        hideServiceSuggestions();
-        // Also reset feature datasets menu to full list if open
-        if (featureDatasetsMenu.style.display === "block") {
-          populateFeatureDatasetsMenu();
+      // 5. Replace the onServiceInput function completely
+      function onServiceInput(e) {
+        const input = e.target.value.trim().toLowerCase();
+        if (input.length === 0) {
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+          addressSearchData = [];
+          // Also reset feature datasets menu to full list if open
+          if (featureDatasetsMenu.style.display === "block") {
+            populateFeatureDatasetsMenu();
+          }
+          return;
         }
-        return;
+        
+        if (featureDatasetsMenu.style.display === "block") {
+          // When menu is open, only filter the menu items and hide service suggestions
+          filterFeatureDatasetsMenu(input);
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+        } else {
+          // When menu is closed, show both layer and address suggestions
+          const filteredLayers = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
+          
+          // Search for addresses if input is long enough
+          if (input.length >= 3) {
+            debouncedAddressSearch(input).then(addressResults => {
+              addressSearchData = addressResults;
+              console.log(addressSearchData)
+              renderCombinedSuggestions(addressResults, filteredLayers);
+            });
+          } else {
+            addressSearchData = [];
+            renderCombinedSuggestions(filteredLayers, []);
+          }
+        }
       }
-      if (featureDatasetsMenu.style.display === "block") {
-        // When menu is open, only filter the menu items and hide service suggestions
-        filterFeatureDatasetsMenu(input);
-        clearServiceSuggestions();
-        hideServiceSuggestions();
-      } else {
-        // When menu is closed, show service suggestions as search results
-        const filtered = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
-        renderServiceSuggestions(filtered);
-      }
-    }
-
 
 
       function renderServiceSuggestions(layers) {
@@ -473,6 +1124,76 @@
       }
 
 
+      function renderCombinedSuggestions(addresses,layers) {
+        clearServiceSuggestions();
+        
+        let totalResults = layers.length + addresses.length;
+        if (totalResults === 0) {
+          hideServiceSuggestions();
+          return;
+        }
+        
+        let index = 0;
+        
+        // Add address results first
+        // console.log("display",addresses)
+        addresses.results.forEach((address, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.type = "address";
+          div.dataset.addressIndex = idx;
+          div.style.borderLeft = "3px solid #28a745"; // Green border for addresses
+          
+          const mainText = address.attributes.Name || "Unknown Address";
+          const locationText = address.address ? 
+            `${address.attributes.Address || ''}, Singapore ${address.attributes.PostalCode || ''}`.replace(/^,\s*|,\s*$/, '') : '';
+          
+          div.innerHTML = `
+            <div style="font-weight: bold;padding:0px;">${mainText}</div>
+            <div style="font-size: 0.8em; color: #666; font-style: italic;padding:0px;">📍 ${locationText}</div>
+          `;
+          
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault();
+            selectServiceSuggestion(index);
+            serviceSearchInput.value = mainText;
+            zoomToAddress(address);
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+          });
+          
+          serviceSuggestions.appendChild(div);
+          index++;
+        });
+        
+        // Add layer results
+        layers.forEach((layer, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.type = "layer";
+          div.dataset.layerId = layer.id;
+          div.dataset.serviceUrl = layer.serviceUrl;
+          div.style.borderLeft = "3px solid #007bff"; // Blue border for layers
+          
+          div.innerHTML = `<div style="font-weight: normal;padding:0px;">${layer.name}</div>`;
+
+          // <div style="font-size: 0.8em; color: #666; font-style: italic;">🗺️ ${layer.serviceName || 'Feature Layer'}</div>
+          
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault();
+            selectServiceSuggestion(index);
+            loadLayer(layer);
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+          });
+          
+          serviceSuggestions.appendChild(div);
+          index++;
+        });
+        
+        serviceSelectedIndex = -1;
+        showServiceSuggestions();
+      }
 
       function clearServiceSuggestions() {
         while (serviceSuggestions.firstChild) {
@@ -493,12 +1214,9 @@
       }
 
 
-
       function onServiceKeyDown(e) {
         const items = serviceSuggestions.children;
         if (!items.length) return;
-
-
 
         switch (e.key) {
           case "ArrowDown":
@@ -518,12 +1236,38 @@
           case "Enter":
             e.preventDefault();
             if (serviceSelectedIndex >= 0 && serviceSelectedIndex < items.length) {
-              items[serviceSelectedIndex].dispatchEvent(new Event("mousedown"));
+              const selectedItem = items[serviceSelectedIndex];
+              const itemType = selectedItem.dataset.type;
+              
+              if (itemType === "address") {
+                const addressIndex = parseInt(selectedItem.dataset.addressIndex);
+                const address = addressSearchData.results[addressIndex];
+                serviceSearchInput.value = address.address || "";
+                zoomToAddress(address);
+              } else if (itemType === "layer") {
+                const layerId = selectedItem.dataset.layerId;
+                const serviceUrl = selectedItem.dataset.serviceUrl;
+                const layer = layerInfos.find(l => l.id == layerId && l.serviceUrl === serviceUrl);
+                if (layer) {
+                  loadLayer(layer);
+                }
+              }
+              
+              clearServiceSuggestions();
+              hideServiceSuggestions();
             } else {
+              // Handle direct input matching
               const inputVal = serviceSearchInput.value.trim().toLowerCase();
               const matchLayer = layerInfos.find(l => l.name.toLowerCase() === inputVal);
               if (matchLayer) {
                 loadLayer(matchLayer);
+              } else if (inputVal.length >= 3) {
+                // Try address search for exact match
+                debouncedAddressSearch(inputVal).then(addressResults => {
+                  if (addressResults.length > 0) {
+                    zoomToAddress(addressResults[0]);
+                  }
+                });
               }
               clearServiceSuggestions();
               hideServiceSuggestions();
@@ -535,8 +1279,6 @@
             break;
         }
       }
-
-
 
       function updateServiceSuggestionHighlight() {
         const items = serviceSuggestions.children;
@@ -575,7 +1317,7 @@
 
 
         if (loadedFeatureLayer) {
-          map.remove(loadedFeatureLayer);
+          scene.remove(loadedFeatureLayer);
           loadedFeatureLayer = null;
           if (highlightHandle) {
             highlightHandle.remove();
@@ -614,11 +1356,11 @@
 
 
 
-        map.add(loadedFeatureLayer);
+        scene.add(loadedFeatureLayer);
 
 
 
-        view.whenLayerView(loadedFeatureLayer).then(lv => {
+        activeView.whenLayerView(loadedFeatureLayer).then(lv => {
           layerView = lv;
           // Query features for feature search
           queryFeaturesForSearch(loadedFeatureLayer).then(() => {
@@ -631,10 +1373,21 @@
             showFeatureSearch();
           });
 
+          // Ensure highlight is refreshed on view change to fix 2D highlight issue
+          activeView.watch("updating", (isUpdating) => {
+            if (!isUpdating && highlightHandle) {
+              // highlightHandle.remove();
+              // Re-highlight the last highlighted feature
+              if (highlightHandle.feature) {
+                highlightHandle = layerView.highlight(highlightHandle.feature);
+              }
+            }
+          });
 
 
-          if (view.popup && typeof view.popup.close === "function") {
-            view.popup.close();
+
+          if (activeView.popup && typeof activeView.popup.close === "function") {
+            activeView.popup.close();
           }
           if (highlightHandle) {
             highlightHandle.remove();
@@ -644,16 +1397,16 @@
 
 
           // Remove previous click handlers if any
-          if (view._clickHandler) {
-            view._clickHandler.remove();
+          if (activeView._clickHandler) {
+            activeView._clickHandler.remove();
           }
 
 
 
-          view._clickHandler = view.on("click", event => {
+          activeView._clickHandler = activeView.on("click", event => {
             event.preventDefault(); // Prevent default behavior that may cause a boundary to appear
             if (!layerView) return;
-            view.hitTest(event).then(response => {
+            activeView.hitTest(event).then(response => {
               const results = response.results.filter(r => r.graphic.layer === loadedFeatureLayer);
               if (results.length) {
                 const feature = results[0].graphic;
@@ -661,7 +1414,7 @@
                   highlightHandle.remove();
                 }
                 highlightHandle = layerView.highlight(feature);
-                view.popup.open({
+                activeView.popup.open({
                   features: [feature],
                   location: feature.geometry.centroid || feature.geometry.extent.center || event.mapPoint
                 });
@@ -670,7 +1423,7 @@
                   highlightHandle.remove();
                   highlightHandle = null;
                 }
-                view.popup.close();
+                activeView.popup.close();
               }
             });
           });
@@ -685,35 +1438,23 @@
         featureSearchData = [];
         featureSearchField = null;
 
-
-
         const query = featureLayer.createQuery();
 
-
-
-        // Create a buffer around the current view extent
-        const bufferDistance = 500; // Set buffer distance in meters (adjust as needed)
-        const bufferedGeometry = geometryEngine.buffer(view.extent, bufferDistance, "meters");
-
-
+        // Reduced buffer distance for better performance
+        const bufferDistance = 5; // Set buffer distance in meters (adjust as needed)
+        const bufferedGeometry = geometryEngine.buffer(activeView.extent, bufferDistance, "meters");
 
         query.geometry = bufferedGeometry; // Set the geometry to the buffered area
         query.outFields = ["*"];
         query.returnGeometry = true; // we just want fields initially
         query.orderByFields = []; // no order
-        query.num = 2000; // Increase the limit to 2000 or more as needed
-
-
+        query.num = 1000; // Reduced number of features to query
 
         const results = await featureLayer.queryFeatures(query);
-
-
 
         if (!results.features.length) {
             return;
         }
-
-
 
         featureSearchData = results.features;
 
@@ -917,45 +1658,111 @@
       function zoomToFeature(feature) {
         if (!feature || !layerView) return;
 
-
-
         // Remove previous highlight and popup
         if (highlightHandle) {
           highlightHandle.remove();
           highlightHandle = null;
         }
-        if (view.popup && typeof view.popup.close === "function") {
-          view.popup.close();
+        if (activeView.popup && typeof activeView.popup.close === "function") {
+          activeView.popup.close();
         }
-
-
 
         // Center and zoom on feature geometry
         let geom = feature.geometry;
         if (geom.type === "point") {
-          view.goTo({target: geom, zoom: Math.max(view.zoom, 14)});
+          activeView.goTo({target: geom, zoom: Math.max(activeView.zoom, 18)}); // Increased zoom level from 14 to 17
         } else if (geom.extent) {
           // zoom to extent with padding
-          view.goTo(geom.extent.expand(1.5));
+          activeView.goTo(geom.extent.expand(1.5));
         } else {
-          view.goTo(geom);
+          activeView.goTo(geom);
         }
-
-
 
         // Highlight feature
         highlightHandle = layerView.highlight(feature);
 
-
-
         // Open popup on feature location
-        view.popup.open({
+        if(activeView.popup){activeView.popup.open({
           features: [feature],
-          location: geom.type === "point" ? geom : geom.extent ? geom.extent.center : view.center
-        });
+          location: geom.type === "point" ? geom : geom.extent ? geom.extent.center : activeView.center
+          });
+        }
       }
 
 
+      async function zoomToAddress(addressResult) {
+
+        currentAbortRetreiveController = new AbortController();
+        const retrieveSignal = currentAbortRetreiveController.signal;
+
+
+        mapboxPOI_id = addressResult.attributes.MapboxId
+
+        const params = new URLSearchParams({
+            access_token: MAPBOX_ACCESS_TOKEN,
+            session_token: uuid
+          });
+
+        const retrieveResults = await fetch(`${geocodeRetrieveUrl}/${mapboxPOI_id}?${params}`, { retrieveSignal });
+        
+        if (!retrieveResults.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+        const geojsondata = await retrieveResults.json();
+            
+        const point = new Point({
+          longitude: geojsondata.features[0].properties.coordinates.longitude,
+          latitude: geojsondata.features[0].properties.coordinates.latitude
+        });
+
+        // const address = addressResult.address || "Selected Address";
+        
+        // Create a graphic for the address point
+        const addressGraphic = new Graphic({
+          geometry: point,
+          symbol: {
+            type: "picture-marker",
+            url: "https://static.arcgis.com/images/Symbols/Shapes/RedPin1LargeB.png",
+            width: "32px",
+            height: "32px",
+            // yoffset: 16
+          },
+          attributes: {
+            Name: geojsondata.features[0].properties.name,
+            Address: geojsondata.features[0].properties.full_address,
+            Score: addressResult.score
+          },
+          popupTemplate: {
+            title: "📍 Address",
+            content: `
+              ${geojsondata.features[0].properties.name || 'N/A'}<br>
+              <b>Address:</b> ${geojsondata.features[0].properties.full_address}<br>
+            `
+          }
+        });
+        
+        // Clear previous address graphics (optional - remove if you want to keep multiple pins)
+        activeView.graphics.removeAll();
+        
+        // Add the address graphic
+        activeView.graphics.add(addressGraphic);
+       
+        // Zoom to the address
+        activeView.goTo({
+          target: point,
+          zoom: 16
+        },{
+          animate: false
+        })
+        // .then(() => {
+        //   // Open popup
+        //   activeView.popup.open({
+        //     features: [addressGraphic],
+        //     location: point
+        //   });
+        // });
+      }
 
       // Close suggestions if click outside inputs or suggestions containers
       document.addEventListener("click", evt => {
@@ -971,14 +1778,42 @@
 
 
 
-      // Add an event listener for extent changes
-      view.watch("extent", function(newExtent) {
-        // Call the queryFeaturesForSearch function with the updated extent/
-		//console.log(view.extent);
-		
-        queryFeaturesForSearch(loadedFeatureLayer);
+      // Declare extentWatchHandle to manage extent watch lifecycle
+      let extentWatchHandle = null;
+
+      // Debounced queryFeaturesForSearch to reduce frequency on extent changes
+      const debouncedQueryFeaturesForSearch = debounce(() => {
+        if (loadedFeatureLayer) {
+          queryFeaturesForSearch(loadedFeatureLayer);
+        }
+      }, 500);
+
+      // Add an event listener for extent changes and assign to extentWatchHandle
+      extentWatchHandle = activeView.watch("extent", function(newExtent) {
+        debouncedQueryFeaturesForSearch();
       });
-	  
+
+      // Function to update location info display
+      function updateLocationInfo() {
+        const center = view.center;
+        const zoom = view.zoom;
+        if (center && zoom !== undefined) {
+          const lat = center.latitude.toFixed(6);
+          const lon = center.longitude.toFixed(6);
+          locationInfoDiv.textContent = `Center: [${lat}, ${lon}] | Zoom: ${zoom.toFixed(2)}`;
+          // console.log(`Map center: [${lat}, ${lon}], Zoom level: ${zoom.toFixed(2)}`);
+        }
+      }
+
+      // Watch for changes in center and zoom to update location info
+      view.watch("center", updateLocationInfo);
+      view.watch("zoom", updateLocationInfo);
+
+      // Initial update
+      view.when(() => {
+        updateLocationInfo();
+      });
+
 	  // view.watch("extent", function(newExtent) {
 		// console.log(view.extent)
 	  // });
