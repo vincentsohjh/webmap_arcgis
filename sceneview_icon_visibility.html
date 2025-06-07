@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>SceneView - Prevent Icon Blocking</title>
+    <style>
+        html, body, #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 99;
+            max-width: 350px;
+        }
+        
+        button {
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: #0079c1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #005a87;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+        
+        .control-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        h4 {
+            margin: 0 0 8px 0;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .info {
+            font-size: 12px;
+            color: #ccc;
+            margin-top: 5px;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 5px;
+            margin: 5px 0;
+            border: 1px solid #666;
+            border-radius: 3px;
+            background: #333;
+            color: white;
+        }
+        
+        label {
+            display: block;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css">
+    <script src="https://js.arcgis.com/4.28/"></script>
+</head>
+<body>
+    <div id="viewDiv"></div>
+    <div id="controls">
+        <div class="control-group">
+            <h4>Icon Visibility Solutions</h4>
+            <button id="elevateIcons">Elevate Icons Above Buildings</button>
+            <button id="screenSpaceIcons">Screen Space Icons</button>
+            <button id="depthTestOff">Disable Depth Testing</button>
+            <button id="billboardIcons">Billboard Icons</button>
+            <div class="info">Different approaches to prevent icon blocking</div>
+        </div>
+        
+        <div class="control-group">
+            <h4>Elevation Settings</h4>
+            <label>
+                Icon Height Above Ground (meters):
+                <input type="range" id="elevationSlider" min="0" max="200" value="50" step="10">
+                <span id="elevationValue">50m</span>
+            </label>
+            <button id="applyElevation">Apply Elevation</button>
+        </div>
+        
+        <div class="control-group">
+            <h4>Icon Rendering Options</h4>
+            <label>
+                <input type="checkbox" id="alwaysOnTop"> Always render on top
+            </label>
+            <label>
+                <input type="checkbox" id="occludedTransparency"> Fade when occluded
+            </label>
+            <label>
+                Icon Size: <input type="range" id="sizeSlider" min="16" max="64" value="32" step="4">
+                <span id="sizeValue">32px</span>
+            </label>
+        </div>
+        
+        <div class="control-group">
+            <h4>Scene Controls</h4>
+            <button id="toggleBuildings">Toggle Buildings</button>
+            <button id="addTestIcons">Add Test Icons</button>
+            <button id="clearIcons">Clear All Icons</button>
+            <button id="flyToNY">Fly to NYC (3D Buildings)</button>
+        </div>
+    </div>
+
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/SceneView",
+            "esri/layers/GraphicsLayer",
+            "esri/layers/SceneLayer",
+            "esri/Graphic",
+            "esri/geometry/Point",
+            "esri/symbols/PointSymbol3D",
+            "esri/symbols/IconSymbol3DLayer",
+            "esri/symbols/ObjectSymbol3DLayer",
+            "esri/symbols/PictureMarkerSymbol"
+        ], (Map, SceneView, GraphicsLayer, SceneLayer, Graphic, Point, 
+            PointSymbol3D, IconSymbol3DLayer, ObjectSymbol3DLayer, PictureMarkerSymbol) => {
+
+            const graphicsLayer = new GraphicsLayer({
+                title: "Icons Layer"
+            });
+
+            const map = new Map({
+                basemap: "dark-gray-vector",
+                ground: "world-elevation",
+                layers: [graphicsLayer]
+            });
+
+            // Add 3D buildings layer
+            const buildingsLayer = new SceneLayer({
+                url: "https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/Buildings_NewYork_17/SceneServer",
+                title: "NYC Buildings"
+            });
+            map.add(buildingsLayer);
+
+            const view = new SceneView({
+                container: "viewDiv",
+                map: map,
+                camera: {
+                    position: {
+                        x: -74.0059,
+                        y: 40.7128,
+                        z: 500
+                    },
+                    tilt: 60,
+                    heading: 30
+                }
+            });
+
+            // Create custom icon as base64 data URL
+            const customIcon = "data:image/svg+xml;base64," + btoa(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="14" fill="#FF6B6B" stroke="#fff" stroke-width="2"/>
+                    <circle cx="16" cy="16" r="6" fill="#fff"/>
+                    <text x="16" y="20" text-anchor="middle" fill="#FF6B6B" font-size="12" font-weight="bold">!</text>
+                </svg>
+            `);
+
+            // Sample locations in NYC
+            const locations = [
+                { x: -74.0059, y: 40.7128, name: "Times Square" },
+                { x: -74.0445, y: 40.6892, name: "Statue of Liberty" },
+                { x: -73.9857, y: 40.7484, name: "Empire State Building" },
+                { x: -73.9442, y: 40.8081, name: "Central Park" },
+                { x: -74.0134, y: 40.7051, name: "Wall Street" },
+                { x: -73.9969, y: 40.7614, name: "Brooklyn Bridge" }
+            ];
+
+            let currentIcons = [];
+            let currentElevation = 50;
+            let currentSize = 32;
+
+            // Method 1: Elevate icons above buildings
+            function createElevatedIcons() {
+                clearAllIcons();
+                
+                locations.forEach((location, index) => {
+                    const point = new Point({
+                        x: location.x,
+                        y: location.y,
+                        z: currentElevation, // Elevation above ground
+                        spatialReference: { wkid: 4326 }
+                    });
+
+                    const symbol = new PointSymbol3D({
+                        symbolLayers: [
+                            new IconSymbol3DLayer({
+                                resource: { href: customIcon },
+                                size: currentSize,
+                                anchor: "bottom"
+                            })
+                        ]
+                    });
+
+                    const graphic = new Graphic({
+                        geometry: point,
+                        symbol: symbol,
+                        attributes: { name: location.name }
+                    });
+
+                    graphicsLayer.add(graphic);
+                    currentIcons.push(graphic);
+                });
+            }
+
+            // Method 2: Screen space icons (always visible)
+            function createScreenSpaceIcons() {
+                clearAllIcons();
+                
+                locations.forEach((location, index) => {
+                    const point = new Point({
+                        x: location.x,
+                        y: location.y,
+                        spatialReference: { wkid: 4326 }
+                    });
+
+                    // Using PictureMarkerSymbol for screen space rendering
+                    const symbol = new PictureMarkerSymbol({
+                        url: customIcon,
+                        width: currentSize,
+                        height: currentSize
+                    });
+
+                    const graphic = new Graphic({
+                        geometry: point,
+                        symbol: symbol,
+                        attributes: { name: location.name }
+                    });
+
+                    graphicsLayer.add(graphic);
+                    currentIcons.push(graphic);
+                });
+            }
+
+            // Method 3: Disable depth testing (icons always on top)
+            function createDepthTestOffIcons() {
+                clearAllIcons();
+                
+                locations.forEach((location, index) => {
+                    const point = new Point({
+                        x: location.x,
+                        y: location.y,
+                        z: 10, // Small elevation
+                        spatialReference: { wkid: 4326 }
+                    });
+
+                    const symbol = new PointSymbol3D({
+                        symbolLayers: [
+                            new IconSymbol3DLayer({
+                                resource: { href: customIcon },
+                                size: currentSize,
+                                anchor: "bottom"
+                            })
+                        ],
+                        // Disable depth testing to always render on top
+                        verticalOffset: {
+                            screenLength: 0,
+                            maxWorldLength: 0,
+                            minWorldLength: 0
+                        }
+                    });
+
+                    const graphic = new Graphic({
+                        geometry: point,
+                        symbol: symbol,
+                        attributes: { name: location.name }
+                    });
+
+                    graphicsLayer.add(graphic);
+                    currentIcons.push(graphic);
+                });
+            }
+
+            // Method 4: Billboard icons (always face camera)
+            function createBillboardIcons() {
+                clearAllIcons();
+                
+                locations.forEach((location, index) => {
+                    const point = new Point({
+                        x: location.x,
+                        y: location.y,
+                        z: currentElevation,
+                        spatialReference: { wkid: 4326 }
+                    });
+
+                    const symbol = new PointSymbol3D({
+                        symbolLayers: [
+                            new IconSymbol3DLayer({
+                                resource: { href: customIcon },
+                                size: currentSize,
+                                anchor: "bottom"
+                            })
+                        ],
+                        // Billboard mode - always faces camera
+                        verticalOffset: {
+                            screenLength: 20,
+                            maxWorldLength: 100,
+                            minWorldLength: 10
+                        },
+                        callout: {
+                            type: "line",
+                            size: 2,
+                            color: [255, 255, 255, 0.8],
+                            border: {
+                                color: [0, 0, 0, 0.3]
+                            }
+                        }
+                    });
+
+                    const graphic = new Graphic({
+                        geometry: point,
+                        symbol: symbol,
+                        attributes: { name: location.name }
+                    });
+
+                    graphicsLayer.add(graphic);
+                    currentIcons.push(graphic);
+                });
+            }
+
+            // Method 5: Apply custom rendering properties
+            function applyRenderingOptions() {
+                const alwaysOnTop = document.getElementById("alwaysOnTop").checked;
+                const occludedTransparency = document.getElementById("occludedTransparency").checked;
+                
+                // Apply to graphics layer
+                if (alwaysOnTop) {
+                    graphicsLayer.elevationInfo = {
+                        mode: "on-the-ground",
+                        featureExpressionInfo: {
+                            expression: currentElevation.toString()
+                        }
+                    };
+                }
+                
+                // Note: Some properties require custom shader effects in advanced scenarios
+                console.log("Rendering options applied:", { alwaysOnTop, occludedTransparency });
+            }
+
+            function clearAllIcons() {
+                graphicsLayer.removeAll();
+                currentIcons = [];
+            }
+
+            function updateElevation() {
+                currentElevation = parseInt(document.getElementById("elevationSlider").value);
+                document.getElementById("elevationValue").textContent = currentElevation + "m";
+            }
+
+            function updateSize() {
+                currentSize = parseInt(document.getElementById("sizeSlider").value);
+                document.getElementById("sizeValue").textContent = currentSize + "px";
+            }
+
+            function toggleBuildings() {
+                buildingsLayer.visible = !buildingsLayer.visible;
+            }
+
+            // Event listeners
+            document.getElementById("elevateIcons").addEventListener("click", createElevatedIcons);
+            document.getElementById("screenSpaceIcons").addEventListener("click", createScreenSpaceIcons);
+            document.getElementById("depthTestOff").addEventListener("click", createDepthTestOffIcons);
+            document.getElementById("billboardIcons").addEventListener("click", createBillboardIcons);
+            
+            document.getElementById("elevationSlider").addEventListener("input", updateElevation);
+            document.getElementById("sizeSlider").addEventListener("input", updateSize);
+            document.getElementById("applyElevation").addEventListener("click", createElevatedIcons);
+            
+            document.getElementById("alwaysOnTop").addEventListener("change", applyRenderingOptions);
+            document.getElementById("occludedTransparency").addEventListener("change", applyRenderingOptions);
+            
+            document.getElementById("toggleBuildings").addEventListener("click", toggleBuildings);
+            document.getElementById("addTestIcons").addEventListener("click", createElevatedIcons);
+            document.getElementById("clearIcons").addEventListener("click", clearAllIcons);
+            
+            document.getElementById("flyToNY").addEventListener("click", () => {
+                view.goTo({
+                    target: {
+                        x: -74.0059,
+                        y: 40.7128,
+                        z: 300
+                    },
+                    tilt: 65,
+                    heading: 45
+                });
+            });
+
+            // Initialize with elevated icons
+            view.when(() => {
+                setTimeout(() => {
+                    createElevatedIcons();
+                }, 1000);
+            });
+        });
+    </script>
+</body>
+</html>

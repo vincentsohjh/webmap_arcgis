@@ -338,9 +338,8 @@
       "esri/symbols/PointSymbol3D",
       "esri/symbols/ObjectSymbol3DLayer",
       "esri/layers/GeoJSONLayer",
-      "esri/symbols/SimpleMarkerSymbol",
-      "esri/renderers/SimpleRenderer"
-      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, GeoJSONLayer, SimpleMarkerSymbol, SimpleRenderer) {
+      "esri/symbols/PictureMarkerSymbol"
+      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, GeoJSONLayer, PictureMarkerSymbol) {
  
       // 1. Updated basemap configurations (replace the existing basemapConfigs array)
       const basemapConfigs = [
@@ -1716,18 +1715,15 @@
           latitude: geojsondata.features[0].properties.coordinates.latitude
         });
 
-        // const address = addressResult.address || "Selected Address";
+        const symbol = new PictureMarkerSymbol({
+          url: "https://static.arcgis.com/images/Symbols/Shapes/RedPin1LargeB.png",
+          
+        });
         
         // Create a graphic for the address point
         const addressGraphic = new Graphic({
           geometry: point,
-          symbol: {
-            type: "picture-marker",
-            url: "https://static.arcgis.com/images/Symbols/Shapes/RedPin1LargeB.png",
-            width: "32px",
-            height: "32px",
-            // yoffset: 16
-          },
+          symbol: symbol,
           attributes: {
             Name: geojsondata.features[0].properties.name,
             Address: geojsondata.features[0].properties.full_address,
