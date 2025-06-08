@@ -180,6 +180,70 @@
       transform: rotate(180deg);
     }
 
+    /* Loading overlay styles */
+    #loadingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(64, 224, 208, 0.5) 0%, rgba(0, 128, 128, 0.65) 80%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease-out;
+    }
+
+    #loadingOverlay.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #ffffff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: white;
+      font-size: 18px;
+      font-weight: 500;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .loading-progress {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    /* Pulsing dots animation */
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.5s linear infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+
+
     /* Media Queries for Mobile Responsiveness */
     @media (max-width: 600px) {
       #searchContainer {
@@ -275,6 +339,15 @@
   </style>
 </head>
 <body>
+
+  <div id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading 3D Map</div>
+    <div class="loading-progress">
+      <span id="loadingStatus">Initializing</span><span class="loading-dots"></span>
+    </div>
+  </div>
+
   <div id="searchContainer">
       <div id="searchTopRow" style="display:flex; align-items:center; gap:8px;">
         <button id="hamburgerMenu" aria-label="Toggle feature datasets menu" title="Feature Datasets Menu" style="background:none; border:none; cursor:pointer; padding:0; margin-right:8px;">
@@ -338,11 +411,44 @@
       "esri/symbols/PointSymbol3D",
       "esri/symbols/ObjectSymbol3DLayer",
       "esri/layers/GeoJSONLayer",
-      "esri/symbols/SimpleMarkerSymbol",
-      "esri/renderers/SimpleRenderer"
-      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, GeoJSONLayer, SimpleMarkerSymbol, SimpleRenderer) {
+      "esri/symbols/PictureMarkerSymbol"
+      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, GeoJSONLayer, PictureMarkerSymbol) {
  
-      // 1. Updated basemap configurations (replace the existing basemapConfigs array)
+
+      // Loading management
+      let loadingSteps = {
+        mapReady: false,
+        servicesLoaded: false,
+        geolocationComplete: false
+      };
+
+      function updateLoadingStatus(step, message) {
+        const statusElement = document.getElementById('loadingStatus');
+        if (statusElement) {
+          statusElement.textContent = message;
+        }
+        
+        loadingSteps[step] = true;
+        console.log(`Loading step completed: ${step} - ${message}`);
+        
+        // Check if all steps are complete
+        if (Object.values(loadingSteps).every(step => step === true)) {
+          hideLoadingOverlay();
+        }
+      }
+
+      function hideLoadingOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+          overlay.classList.add('fade-out');
+          setTimeout(() => {
+            overlay.style.display = 'none';
+          }, 500);
+        }
+      }
+
+
+      // 1. Updated basemap configurations
       const basemapConfigs = [
         { id: "streets", name: "Streets", type: "esri" },
         { id: "satellite", name: "Satellite", type: "esri" },
@@ -686,6 +792,9 @@
       });
 
       view.when(function() {
+
+        updateLoadingStatus('mapReady', 'Map loaded successfully');
+
         view.environment.lighting = {
             date: new Date('2023-10-01T12:00:00+08:00'), // Set to noon in Singapore time
             directShadowsEnabled: false, // Disabled shadows for performance
@@ -787,14 +896,18 @@
             }).catch(function(error) {
               console.error("Error zooming to user location:", error);
             });
+
+            updateLoadingStatus('geolocationComplete', 'Location found');
           },
           function(error) {
             console.warn("Geolocation error:", error.message);
+            updateLoadingStatus('geolocationComplete', 'Using default location');
             // Keep default view if error or permission denied
           }
         );
       } else {
         console.warn("Geolocation is not supported by this browser.");
+        updateLoadingStatus('geolocationComplete', 'Using default location');
       }
       });
 
@@ -1029,6 +1142,7 @@
           })
       )).then(results => {
         layerInfos = results.flat();
+        updateLoadingStatus('servicesLoaded', 'Services loaded');
         if (layerInfos.length === 0) {
           alert("No feature layers found in the specified services.");
         }
@@ -1716,18 +1830,15 @@
           latitude: geojsondata.features[0].properties.coordinates.latitude
         });
 
-        // const address = addressResult.address || "Selected Address";
+        const symbol = new PictureMarkerSymbol({
+          url: "https://static.arcgis.com/images/Symbols/Shapes/RedPin1LargeB.png",
+          
+        });
         
         // Create a graphic for the address point
         const addressGraphic = new Graphic({
           geometry: point,
-          symbol: {
-            type: "picture-marker",
-            url: "https://static.arcgis.com/images/Symbols/Shapes/RedPin1LargeB.png",
-            width: "32px",
-            height: "32px",
-            // yoffset: 16
-          },
+          symbol: symbol,
           attributes: {
             Name: geojsondata.features[0].properties.name,
             Address: geojsondata.features[0].properties.full_address,
