@@ -243,16 +243,60 @@
       80%, 100% { content: '...'; }
     }
 
+    #toggleViewBtn {
+      background: #0079c1;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      min-width: 80px;
+      transition: background-color 0.2s;
+    }
+
+    #toggleViewBtn:hover {
+      background: #005a87;
+    }
+
 
     /* Media Queries for Mobile Responsiveness */
     @media (max-width: 600px) {
       #searchContainer {
-        width: 95%; /* Adjust width for smaller screens */
-        padding: 10px; /* Adjust padding */
-        top: 8px;
-        left: 50%;
-        transform: translateX(-50%);
+        width: 100%; /* Full width on mobile */
+        padding: 12px; /* Adjust padding */
+        top: 0; /* Flush to top */
+        left: 0; /* Flush to left */
+        transform: none; /* Remove centering transform */
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        border-radius: 0 0 8px 8px; /* Only bottom corners rounded */
+        max-width: none; /* Remove max-width constraint */
+        box-sizing: border-box; /* Ensure padding is included in width calculation */        
+      }
+
+     
+      #searchTopRow {
+        flex-wrap: wrap;
+        gap: 6px !important;
+      }
+
+      #toggleViewBtn {
+        font-size: 12px;
+        padding: 6px 8px;
+        min-width: 60px;
+        order: 3; /* Place after hamburger and search input */
+        flex-shrink: 0;
+      }
+
+      .search-block {
+        min-width: 0; /* Allow shrinking */
+      }
+
+      #serviceSearchInput {
+        font-size: 14px;
+        padding: 8px;
+        box-sizing: border-box;
       }
 
 
@@ -362,7 +406,7 @@
           <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
           <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
         </div>
-        <button id="toggleViewBtn" style="margin-left: 8px; padding: 6px 12px; font-size: 14px; cursor: pointer;">Switch to 2D</button>
+        <button id="toggleViewBtn">Switch 2D</button>
       </div>
     <div id="featureDatasetsMenu" class="feature-datasets-menu" style="display:none; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin-bottom: 8px; padding: 4px 0; z-index: 1001; position: relative;">
       <!-- Feature datasets will be populated here -->
@@ -762,7 +806,7 @@
           view.container = null;
           mapView.container = "viewDiv";
           activeView = mapView;
-          toggleViewBtn.textContent = "Switch to 3D";
+          toggleViewBtn.textContent = "Switch 3D";
 
           // Update extent watch for activeView change
           if (extentWatchHandle) {
@@ -779,7 +823,7 @@
           mapView.container = null;
           view.container = "viewDiv";
           activeView = view;
-          toggleViewBtn.textContent = "Switch to 2D";
+          toggleViewBtn.textContent = "Switch 2D";
 
           // Update extent watch for activeView change
           if (extentWatchHandle) {
