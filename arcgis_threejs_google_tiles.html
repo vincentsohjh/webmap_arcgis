@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArcGIS + Three.js Google 3D Tiles</title>
+    
+    <!-- ArcGIS SDK -->
+    <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
+    <script>
+        // Configure ArcGIS loader to avoid conflicts
+        var dojoConfig = {
+            async: true,
+            locale: 'en-us'
+        };
+    </script>
+    <script src="https://js.arcgis.com/4.32/"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <style>
+        html, body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, sans-serif;
+        }
+        
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        button {
+            background: #0079c1;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        
+        button:hover {
+            background: #005a87;
+        }
+        
+        select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        #status {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="viewDiv"></div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <label>Location:</label>
+            <select id="locationSelect">
+                <option value="new-york">New York City</option>
+                <option value="london">London</option>
+                <option value="tokyo">Tokyo</option>
+                <option value="paris">Paris</option>
+                <option value="sydney">Sydney</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="loadGoogleTiles()">Load Google 3D Tiles</button>
+            <button onclick="toggleView()">Toggle 2D/3D</button>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="addThreeJSObjects()">Add 3D Objects</button>
+            <button onclick="clearThreeJS()">Clear Objects</button>
+        </div>
+    </div>
+    
+    <div id="status">Ready to load Google 3D tiles...</div>
+
+    <script>
+        let view, map, sceneView, mapView;
+        let threeJSObjects = [];
+        let googleTilesLayer;
+        let currentViewType = '3d';
+        
+        // Location coordinates
+        const locations = {
+            'new-york': { lat: 40.7128, lng: -74.0060, zoom: 16 },
+            'london': { lat: 51.5074, lng: -0.1278, zoom: 16 },
+            'tokyo': { lat: 35.6762, lng: 139.6503, zoom: 16 },
+            'paris': { lat: 48.8566, lng: 2.3522, zoom: 16 },
+            'sydney': { lat: -33.8688, lng: 151.2093, zoom: 16 }
+        };
+
+        require([
+            "esri/Map",
+            "esri/views/SceneView",
+            "esri/views/MapView",
+            "esri/layers/TileLayer",
+            "esri/layers/ElevationLayer",
+            "esri/Ground",
+            "esri/geometry/Point",
+            "esri/Graphic",
+            "esri/symbols/PointSymbol3D",
+            "esri/symbols/ObjectSymbol3DLayer"
+        ], function(Map, SceneView, MapView, TileLayer, ElevationLayer, Ground, Point, Graphic, PointSymbol3D, ObjectSymbol3DLayer) {
+            
+            try {
+                // Create the map
+                map = new Map({
+                    basemap: "satellite",
+                    ground: "world-elevation"
+                });
+
+                // Create 3D scene view
+                sceneView = new SceneView({
+                    container: "viewDiv",
+                    map: map,
+                    camera: {
+                        position: {
+                            x: locations['new-york'].lng,
+                            y: locations['new-york'].lat,
+                            z: 500
+                        },
+                        tilt: 45
+                    }
+                });
+
+                // Create 2D map view (initially hidden)
+                mapView = new MapView({
+                    container: document.createElement("div"),
+                    map: map,
+                    center: [locations['new-york'].lng, locations['new-york'].lat],
+                    zoom: 15
+                });
+
+                view = sceneView;
+                
+                // Wait for view to load
+                sceneView.when(function() {
+                    updateStatus("ArcGIS scene loaded successfully");
+                }).catch(function(error) {
+                    updateStatus("Error loading ArcGIS scene: " + error.message);
+                    console.error("ArcGIS error:", error);
+                });
+
+                // Location selector change handler
+                document.getElementById('locationSelect').addEventListener('change', function(e) {
+                    const location = locations[e.target.value];
+                    if (location) {
+                        if (currentViewType === '3d') {
+                            sceneView.goTo({
+                                center: [location.lng, location.lat],
+                                zoom: location.zoom,
+                                tilt: 45
+                            });
+                        } else {
+                            mapView.goTo({
+                                center: [location.lng, location.lat],
+                                zoom: location.zoom
+                            });
+                        }
+                        updateStatus(`Navigated to ${e.target.options[e.target.selectedIndex].text}`);
+                    }
+                });
+                
+            } catch (error) {
+                updateStatus("Error initializing ArcGIS: " + error.message);
+                console.error("Initialization error:", error);
+            }
+        }).catch(function(error) {
+            updateStatus("Error loading ArcGIS modules: " + error.message);
+            console.error("Module loading error:", error);
+        });
+
+        function loadGoogleTiles() {
+            // Note: Google 3D Tiles API requires authentication and specific setup
+            // This is a demonstration of how you would integrate it
+            
+            updateStatus("Loading Google 3D Tiles...");
+            
+            // Simulate Google 3D Tiles loading
+            // In a real implementation, you would use Google's Photorealistic 3D Tiles API
+            // which requires authentication and proper API setup
+            
+            try {
+                // Example of how Google 3D Tiles would be loaded
+                // const GOOGLE_TILES_ENDPOINT = 'https://tile.googleapis.com/v1/3dtiles/root.json';
+                // const API_KEY = 'your-google-api-key';
+                
+                // For demonstration, we'll add a custom tile layer
+                require([
+                    "esri/layers/TileLayer"
+                ], function(TileLayer) {
+                    
+                    // Remove existing Google tiles layer if present
+                    if (googleTilesLayer) {
+                        map.remove(googleTilesLayer);
+                    }
+                    
+                    // Create a demonstration tile layer
+                    // In reality, this would be configured for Google 3D Tiles
+                    googleTilesLayer = new TileLayer({
+                        url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+                        title: "Google 3D Tiles (Demo)",
+                        opacity: 0.8
+                    });
+                    
+                    map.add(googleTilesLayer);
+                    updateStatus("Google 3D Tiles loaded (demo layer)");
+                });
+                
+            } catch (error) {
+                updateStatus("Error loading Google 3D Tiles: " + error.message);
+                console.error('Google 3D Tiles error:', error);
+            }
+        }
+
+        function toggleView() {
+            const container = document.getElementById('viewDiv');
+            
+            if (currentViewType === '3d') {
+                // Switch to 2D
+                sceneView.container = null;
+                mapView.container = container;
+                view = mapView;
+                currentViewType = '2d';
+                updateStatus("Switched to 2D view");
+            } else {
+                // Switch to 3D
+                mapView.container = null;
+                sceneView.container = container;
+                view = sceneView;
+                currentViewType = '3d';
+                updateStatus("Switched to 3D view");
+            }
+        }
+
+        function addThreeJSObjects() {
+            if (currentViewType !== '3d') {
+                updateStatus("3D objects can only be added in 3D view");
+                return;
+            }
+            
+            updateStatus("Adding Three.js 3D objects...");
+            
+            require([
+                "esri/geometry/Point",
+                "esri/Graphic",
+                "esri/symbols/PointSymbol3D",
+                "esri/symbols/ObjectSymbol3DLayer"
+            ], function(Point, Graphic, PointSymbol3D, ObjectSymbol3DLayer) {
+                
+                // Clear existing objects
+                clearThreeJS();
+                
+                // Get current view center
+                const center = view.center;
+                
+                // Add various 3D objects around the center
+                const objects = [
+                    { 
+                        offset: [0.001, 0.001], 
+                        symbol: new PointSymbol3D({
+                            symbolLayers: [new ObjectSymbol3DLayer({
+                                resource: { primitive: "cube" },
+                                material: { color: "red" },
+                                width: 50,
+                                height: 100,
+                                depth: 50
+                            })]
+                        })
+                    },
+                    { 
+                        offset: [-0.001, 0.001], 
+                        symbol: new PointSymbol3D({
+                            symbolLayers: [new ObjectSymbol3DLayer({
+                                resource: { primitive: "sphere" },
+                                material: { color: "blue" },
+                                width: 60,
+                                height: 60,
+                                depth: 60
+                            })]
+                        })
+                    },
+                    { 
+                        offset: [0.001, -0.001], 
+                        symbol: new PointSymbol3D({
+                            symbolLayers: [new ObjectSymbol3DLayer({
+                                resource: { primitive: "cylinder" },
+                                material: { color: "green" },
+                                width: 40,
+                                height: 120,
+                                depth: 40
+                            })]
+                        })
+                    },
+                    { 
+                        offset: [-0.001, -0.001], 
+                        symbol: new PointSymbol3D({
+                            symbolLayers: [new ObjectSymbol3DLayer({
+                                resource: { primitive: "cone" },
+                                material: { color: "yellow" },
+                                width: 50,
+                                height: 80,
+                                depth: 50
+                            })]
+                        })
+                    }
+                ];
+                
+                objects.forEach((obj, index) => {
+                    const point = new Point({
+                        longitude: center.longitude + obj.offset[0],
+                        latitude: center.latitude + obj.offset[1],
+                        z: 100 + (index * 20) // Vary heights
+                    });
+                    
+                    const graphic = new Graphic({
+                        geometry: point,
+                        symbol: obj.symbol
+                    });
+                    
+                    view.graphics.add(graphic);
+                    threeJSObjects.push(graphic);
+                });
+                
+                updateStatus(`Added ${objects.length} Three.js-style 3D objects`);
+            });
+        }
+
+        function clearThreeJS() {
+            threeJSObjects.forEach(obj => {
+                view.graphics.remove(obj);
+            });
+            threeJSObjects = [];
+            updateStatus("Cleared all 3D objects");
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+            console.log(message);
+        }
+
+        // Initialize the application
+        window.addEventListener('load', function() {
+            updateStatus("Application loaded. Select a location and load Google 3D Tiles.");
+        });
+    </script>
+</body>
+</html>

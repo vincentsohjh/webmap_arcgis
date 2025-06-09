@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>ArcGIS JS with Cesium 3D Tiles</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.28/"></script>
+    <!-- Cesium for 3D Tiles support -->
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.109/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.109/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <style>
+        html, body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, sans-serif;
+        }
+        
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #arcgisDiv, #cesiumDiv {
+            width: 50%;
+            height: 100%;
+            position: relative;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(42, 42, 42, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        button {
+            background: #0079c1;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #005a87;
+        }
+        
+        .viewer-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 100;
+        }
+        
+        #status {
+            font-size: 12px;
+            margin-top: 10px;
+            padding: 5px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="arcgisDiv">
+            <div class="viewer-label">ArcGIS Maps SDK</div>
+        </div>
+        <div id="cesiumDiv">
+            <div class="viewer-label">Cesium with 3D Tiles</div>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button id="loadNYC">Load NYC 3D Tiles</button>
+            <button id="loadPhotorealistic">Load Google Photorealistic</button>
+            <button id="syncViews">Sync Camera Views</button>
+        </div>
+        <div class="control-group">
+            <button id="clearTiles">Clear All Tiles</button>
+        </div>
+        <div id="status">Ready to load 3D Tiles</div>
+    </div>
+
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/SceneView",
+            "esri/Camera",
+            "esri/geometry/Point"
+        ], function(Map, SceneView, Camera, Point) {
+
+            // Initialize ArcGIS Scene
+            const map = new Map({
+                basemap: "satellite",
+                ground: "world-elevation"
+            });
+
+            const arcgisView = new SceneView({
+                container: "arcgisDiv",
+                map: map,
+                camera: {
+                    position: {
+                        longitude: -74.0059,
+                        latitude: 40.7128,
+                        z: 400
+                    },
+                    heading: 0,
+                    tilt: 45
+                }
+            });
+
+            // Initialize Cesium Viewer
+            Cesium.Ion.defaultAccessToken = 'YOUR_CESIUM_ION_TOKEN'; // Optional: for Cesium Ion assets
+            
+            const cesiumViewer = new Cesium.Viewer('cesiumDiv', {
+                terrainProvider: Cesium.createWorldTerrain(),
+                timeline: false,
+                animation: false,
+                homeButton: false,
+                sceneModePicker: false,
+                baseLayerPicker: false,
+                navigationHelpButton: false,
+                geocoder: false,
+                fullscreenButton: false,
+                vrButton: false
+            });
+
+            // Set initial camera position to match ArcGIS
+            cesiumViewer.camera.setView({
+                destination: Cesium.Cartesian3.fromDegrees(-74.0059, 40.7128, 400),
+                orientation: {
+                    heading: Cesium.Math.toRadians(0),
+                    pitch: Cesium.Math.toRadians(-45),
+                    roll: 0.0
+                }
+            });
+
+            let currentTileset = null;
+            const statusDiv = document.getElementById('status');
+
+            function updateStatus(message) {
+                statusDiv.textContent = message;
+                console.log(message);
+            }
+
+            // Load NYC 3D Tiles (example with publicly available tiles)
+            document.getElementById('loadNYC').addEventListener('click', async function() {
+                try {
+                    updateStatus('Loading NYC 3D Tiles...');
+                    
+                    // Remove existing tileset
+                    if (currentTileset) {
+                        cesiumViewer.scene.primitives.remove(currentTileset);
+                    }
+
+                    // Load NYC 3D Buildings (example URL - replace with actual URL)
+                    const tilesetUrl = 'https://assets.cesium.com/43978/tileset.json';
+                    
+                    currentTileset = await Cesium.Cesium3DTileset.fromUrl(tilesetUrl);
+                    cesiumViewer.scene.primitives.add(currentTileset);
+
+                    // Fly to the tileset
+                    cesiumViewer.flyTo(currentTileset);
+                    
+                    updateStatus('NYC 3D Tiles loaded successfully');
+
+                } catch (error) {
+                    updateStatus('Error loading NYC tiles: ' + error.message);
+                    console.error('Error:', error);
+                }
+            });
+
+            // Load Google Photorealistic 3D Tiles
+            document.getElementById('loadPhotorealistic').addEventListener('click', async function() {
+                try {
+                    updateStatus('Loading Google Photorealistic 3D Tiles...');
+                    
+                    const GOOGLE_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+                    
+                    if (GOOGLE_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
+                        updateStatus('Please set your Google Maps API Key');
+                        return;
+                    }
+
+                    // Remove existing tileset
+                    if (currentTileset) {
+                        cesiumViewer.scene.primitives.remove(currentTileset);
+                    }
+
+                    // Google's Photorealistic 3D Tiles
+                    const googleTilesetUrl = `https://tile.googleapis.com/v1/3dtiles/datasets/cdb8c3d7-9adb-4a36-b12e-6d85c40eaa73/files/tileset.json?key=${GOOGLE_API_KEY}`;
+                    
+                    currentTileset = await Cesium.Cesium3DTileset.fromUrl(googleTilesetUrl);
+                    cesiumViewer.scene.primitives.add(currentTileset);
+
+                    // Navigate to a location with good 3D coverage
+                    cesiumViewer.camera.setView({
+                        destination: Cesium.Cartesian3.fromDegrees(-74.0059, 40.7128, 200),
+                        orientation: {
+                            heading: Cesium.Math.toRadians(0),
+                            pitch: Cesium.Math.toRadians(-30),
+                            roll: 0.0
+                        }
+                    });
+                    
+                    updateStatus('Google Photorealistic 3D Tiles loaded successfully');
+
+                } catch (error) {
+                    updateStatus('Error loading Google tiles: ' + error.message);
+                    console.error('Error:', error);
+                }
+            });
+
+            // Sync camera views between ArcGIS and Cesium
+            document.getElementById('syncViews').addEventListener('click', function() {
+                try {
+                    // Get ArcGIS camera position
+                    const arcgisCamera = arcgisView.camera;
+                    
+                    // Convert to Cesium camera
+                    cesiumViewer.camera.setView({
+                        destination: Cesium.Cartesian3.fromDegrees(
+                            arcgisCamera.position.longitude,
+                            arcgisCamera.position.latitude,
+                            arcgisCamera.position.z
+                        ),
+                        orientation: {
+                            heading: Cesium.Math.toRadians(arcgisCamera.heading),
+                            pitch: Cesium.Math.toRadians(arcgisCamera.tilt - 90),
+                            roll: 0.0
+                        }
+                    });
+                    
+                    updateStatus('Camera views synchronized');
+                } catch (error) {
+                    updateStatus('Error syncing views: ' + error.message);
+                }
+            });
+
+            // Clear all tiles
+            document.getElementById('clearTiles').addEventListener('click', function() {
+                if (currentTileset) {
+                    cesiumViewer.scene.primitives.remove(currentTileset);
+                    currentTileset = null;
+                    updateStatus('All tiles cleared');
+                } else {
+                    updateStatus('No tiles to clear');
+                }
+            });
+
+            // Optional: Sync cameras in real-time (can be performance intensive)
+            let syncingCameras = false;
+            
+            arcgisView.watch('camera', function(newCamera) {
+                if (!syncingCameras) {
+                    syncingCameras = true;
+                    setTimeout(() => {
+                        cesiumViewer.camera.setView({
+                            destination: Cesium.Cartesian3.fromDegrees(
+                                newCamera.position.longitude,
+                                newCamera.position.latitude,
+                                newCamera.position.z
+                            ),
+                            orientation: {
+                                heading: Cesium.Math.toRadians(newCamera.heading),
+                                pitch: Cesium.Math.toRadians(newCamera.tilt - 90),
+                                roll: 0.0
+                            }
+                        });
+                        syncingCameras = false;
+                    }, 100);
+                }
+            });
+
+            arcgisView.when(() => {
+                updateStatus('ArcGIS SceneView ready. Click buttons to load 3D Tiles in Cesium viewer.');
+            });
+
+        });
+    </script>
+</body>
+</html>
