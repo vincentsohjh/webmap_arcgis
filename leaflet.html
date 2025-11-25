@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OneMap Reverse Geocode Example</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/2.0.0-alpha.1/leaflet.css" crossorigin="" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin=""></script>
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <!-- <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script> -->
+  <script>
+    // Initialize map centered on Singapore
+    var map = L.map('map').setView([1.3521, 103.8198], 12);
+
+    // Use OneMap basemap tiles
+    L.tileLayer('https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png', {
+      detectRetina: true,
+      maxZoom: 19,
+      minZoom: 11,
+      /** DO NOT REMOVE the OneMap attribution below **/
+      attribution: '<img src="https://www.onemap.gov.sg/web-assets/images/logo/om_logo.png" style="height:20px;width:20px;"/>&nbsp;<a href="https://www.onemap.gov.sg/" target="_blank" rel="noopener noreferrer">OneMap</a>&nbsp;&copy;&nbsp;contributors&nbsp;&#124;&nbsp;<a href="https://www.sla.gov.sg/" target="_blank" rel="noopener noreferrer">Singapore Land Authority</a>'
+    }).addTo(map);
+
+    async function getToken() {
+        const res = await fetch("http://localhost:3001/token"); // 👈 call backend
+        const data = await res.json();
+        return data.token;
+    }
+
+    var marker;
+
+    // Handle clicks
+    map.on("click", async function (e) {
+      var lat = e.latlng.lat.toFixed(6);
+      var lng = e.latlng.lng.toFixed(6);
+
+      const token = await getToken();
+
+      // Call OneMap reverse geocode API via local proxy (to avoid CORS)
+      var url = `https://www.onemap.gov.sg/api/public/revgeocode?location=${lat},${lng}&buffer=10&addressType=All&otherFeatures=N`;
+
+      fetch(url,{
+        headers: { "Authorization": `Bearer ${token}` }
+        })
+        .then(response => response.json())
+        .then(data => {
+          let address = "No address found";
+          if (data.GeocodeInfo && data.GeocodeInfo.length > 0) {
+            console.log(data);
+            address = data.GeocodeInfo[0].BUILDING || data.GeocodeInfo[0].ROAD || "No details";
+          }
+          
+
+          // Add marker with popup
+          L.marker([lat, lng]).addTo(map)
+            .bindPopup(`<b>Lat:</b> ${lat}, <b>Lng:</b> ${lng}<br><b>Address:</b> ${address}`)
+            .openPopup();
+        })
+        .catch(err => {
+          console.error(err);
+          alert("Error fetching address");
+        });
+    });
+  </script>
+</body>
+</html>

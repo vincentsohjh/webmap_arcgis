@@ -1,15 +1,44 @@
 // server.js - Backend API to serve ArcGIS service URLs securely
-const express = require('express');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const helmet = require('helmet');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+import fetch from "node-fetch";
+import dotenv from 'dotenv';
+import path from 'node:path';
+dotenv.config();
+
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+function getDirname(importMetaUrl) {
+ const filename = fileURLToPath(importMetaUrl);
+ return dirname(filename);
+}
+const __dirname = getDirname(import.meta.url);
+console.log(__dirname); // Outputs the directory path
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// 🔑 Replace with your OneMap login
+const ONEMAP_EMAIL = "gs.research17@gmail.com";
+const ONEMAP_PASSWORD = "Iamtechlead$213";
+
+let cachedToken = null;
+let tokenExpiry = null;
+
+
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'","https://cdnjs.cloudflare.com","https://www.onemap.gov.sg"],
+      scriptSrc: ["'self'", "https://unpkg.com","https://cdnjs.cloudflare.com","https://www.onemap.gov.sg", "'unsafe-inline'"],
+      styleSrc: ["'self'", "https://unpkg.com","https://cdnjs.cloudflare.com", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
   credentials: true
@@ -24,6 +53,11 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 app.use(express.json());
+
+// Serve static files from the root directory
+// app.use(express.static(path.dirname(new URL(import.meta.url).pathname)));
+app.use(express.static(__dirname));
+
 
 // Store service URLs securely (should be in environment variables or secure config)
 const SERVICE_URLS = {
@@ -92,13 +126,78 @@ app.get('/api/service/:serviceId', authenticate, async (req, res) => {
   }
 });
 
+// Function to fetch a fresh token
+async function fetchToken() {
+  const res = await fetch("https://www.onemap.gov.sg/api/auth/post/getToken", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: ONEMAP_EMAIL,
+      password: ONEMAP_PASSWORD
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error(`Token request failed: ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  cachedToken = data.access_token;
+  tokenExpiry = Date.now() + (data.expiry_timestamp - data.valid_from_timestamp) * 1000;
+
+  console.log("✅ New OneMap token fetched");
+  return cachedToken;
+}
+
+// Get a valid token (refresh if expired)
+async function getValidToken() {
+  if (!cachedToken || Date.now() >= tokenExpiry) {
+    return await fetchToken();
+  }
+  return cachedToken;
+}
+
+// Expose API endpoint for frontend
+app.get("/token", async (req, res) => {
+  try {
+    const token = await getValidToken();
+    res.json({ token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to get token" });
+  }
+});
+
+// Proxy endpoint for OneMap reverse geocode
+app.get('/api/onemap/revgeocode', async (req, res) => {
+  try {
+    const { location, returnGeom, getAddrDetails } = req.query;
+    const url = `https://www.onemap.gov.sg/api/public/revgeocode?location=${location}&buffer=40&addressType=All&otherFeatures=N`;
+
+    console.log(`Proxying request: ${req.method} ${req.path} to ${url}`);
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error proxying OneMap request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// app.get("/", (req, res) => {
+//   res.sendFile(path.join(__dirname, 'index.html'));
+//   // res.render("index.html")
+// });
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-module.exports = app;
+export default app;
