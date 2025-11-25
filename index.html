@@ -380,6 +380,53 @@
     }
 
    
+/* Custom popup background and text */
+.esri-popup {
+  background-color: #f0f8ff !important; /* Light blue background */
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  border: 2px solid #0079c1 !important;  /* Added blue border */
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+    /* Popup title style */
+    .esri-popup__header-title {
+      color: #004080 !important;
+      font-weight: 700 !important;
+      font-size: 1.2em !important;
+    }
+
+    /* Popup content style */
+    .esri-popup__main-container {
+      color: #333 !important;
+      font-size: 14px !important;
+      padding: 16px !important;
+    }
+
+/* Optional: customize popup buttons and links */
+.esri-popup__footer {
+  border-top: 1px solid #ccc !important;
+  padding-top: 8px !important;
+}
+
+/* Popup table in blue accent instead of gray */
+.esri-popup table {
+  width: 100%;
+  border-collapse: collapse !important;
+  color: #004080 !important; /* Dark blue text */
+  font-weight: 600 !important;
+}
+
+.esri-popup table td, .esri-popup table th {
+  border: 1px solid #0079c1 !important; /* Blue border */
+  padding: 4px !important;
+}
+
+.esri-popup table th {
+  background-color: #e3f2fd !important; /* Light blue background */
+  color: #003366 !important; /* Darker blue for headers */
+  text-align: left !important;
+}
   </style>
 </head>
 <body>
@@ -1498,16 +1545,19 @@
             title: "{Name}",
             content: function(feature) {
               const attrs = feature.graphic.attributes;
-              let contentHtml = "<table style='width: 100%;border-collapse: collapse;'>";
-              for (const key in attrs) {
-                if (attrs.hasOwnProperty(key)) {
-                  contentHtml += "<tr><td style='font-weight: bold; border: 1px solid #ddd; padding:4px;'>" +
-                                  key + "</td><td style='border: 1px solid #ddd; padding:4px;'>" +
-                                  attrs[key] + "</td></tr>";
-                }
-              }
-              contentHtml += "</table>";
-              return contentHtml;
+              return `
+                <div style="line-height: 1.4;">
+                  <h3 style="color: #004080; margin-bottom: 8px;">${attrs.Name}</h3>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    ${Object.entries(attrs).map(([key, value]) => `
+                      <tr>
+                        <td style="font-weight: bold; border: 1px solid #ddd; padding: 4px;">${key}</td>
+                        <td style="border: 1px solid #ddd; padding: 4px;">${value}</td>
+                      </tr>
+                    `).join("")}
+                  </table>
+                </div>
+              `;
             }
           }
         });
