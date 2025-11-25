@@ -1,0 +1,2126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ArcGIS JS SDK - Multi Feature Layer Service & Feature Data Search</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1,user-scalable=no" />
+  <!-- Load ArcGIS API for JavaScript -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.32/"></script>
+  <style>
+    html, body, #viewDiv {
+      height: 100%; 
+      margin: 0; 
+      padding: 0; 
+      width: 100%;
+      font-family: "Avenir Next", Helvetica, Arial, sans-serif;
+    }
+
+
+
+    #viewDiv {
+      outline: none; /* Prevent outline from appearing */
+      border: none; /* Remove any border if present */
+    }
+
+    .my-popup {
+      position: absolute;
+      min-width: 220px;
+      background: white;
+      border-radius: 6px;
+      padding: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 99;
+    }
+
+    /* Custom popup styles (same as before) */
+    #custom-popup {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        max-width: 400px; /* Increased width for more content */
+        max-height: 60vh; /* Add scrolling if needed */
+        overflow-y: auto;
+        padding: 20px;
+    }
+    #custom-popup h3 {
+        margin-top: 0;
+    }
+
+        }
+    #custom-popup ul {
+        list-style: none;
+        padding: 0;
+    }
+    #custom-popup li {
+        margin-bottom: 5px;
+    }
+    #custom-popup button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        cursor: pointer;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+    #custom-popup button:hover {
+        background: #0056b3;
+    }
+    #popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #closePopup {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+
+
+    #searchContainer {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 99;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      padding: 12px 16px;
+      width: 90%; /* Use percentage for responsiveness */
+      max-width: 380px; /* Set a max width */
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+
+
+    .search-block {
+      margin-bottom: 0;
+      flex-grow: 1;
+    }
+
+
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: #333;
+    }
+
+
+
+    input[type="text"] {
+      width: 100%;
+      font-size: 16px;
+      padding: 10px; /* Increased padding for better touch targets */
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+
+
+    .suggestions {
+      margin-top: 4px;
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      display: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      position: relative;
+      z-index: 1000;
+    }
+
+
+
+    .suggestions div {
+      padding: 10px; /* Increased padding for better touch targets */
+      cursor: pointer;
+    }
+
+
+
+    .suggestions div:hover, .suggestions .selected {
+      background-color: #0079c1;
+      color: white;
+    }
+
+
+
+    .suggestions div .service-name {
+      font-size: 0.8em;
+      font-style: italic;
+      color: #555;
+      margin-left: 8px;
+    }
+
+/* Basemap Selector Styles */
+    #basemapContainer {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 98;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 200px;
+    }
+
+    #basemapToggle {
+      background: #0079c1;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    #basemapToggle:hover {
+      background: #005a8b;
+    }
+
+    #basemapOptions {
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .basemap-option {
+      background: none;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      text-align: left;
+      border-radius: 3px;
+      font-size: 13px;
+      transition: background-color 0.2s;
+    }
+
+    .basemap-option:hover {
+      background-color: #f0f0f0;
+    }
+
+    .basemap-option.active {
+      background-color: #e3f2fd;
+      font-weight: bold;
+      color: #0079c1;
+    }
+
+    /* Arrow icon for dropdown */
+    .dropdown-arrow {
+      transition: transform 0.2s;
+    }
+
+    .dropdown-arrow.open {
+      transform: rotate(180deg);
+    }
+
+    /* Loading overlay styles */
+    #loadingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(64, 224, 208, 0.5) 0%, rgba(0, 128, 128, 0.65) 80%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease-out;
+    }
+
+    #loadingOverlay.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #ffffff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: white;
+      font-size: 18px;
+      font-weight: 500;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .loading-progress {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    /* Pulsing dots animation */
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.5s linear infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+
+    #toggleViewBtn {
+      background: #0079c1;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      min-width: 80px;
+      transition: background-color 0.2s;
+    }
+
+    #toggleViewBtn:hover {
+      background: #005a87;
+    }
+
+ 
+    /* Media Queries for Mobile Responsiveness */
+    @media (max-width: 600px) {
+      #searchContainer {
+        width: 100%; /* Full width on mobile */
+        padding: 12px; /* Adjust padding */
+        top: 0; /* Flush to top */
+        left: 0; /* Flush to left */
+        transform: none; /* Remove centering transform */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        border-radius: 0 0 8px 8px; /* Only bottom corners rounded */
+        max-width: none; /* Remove max-width constraint */
+        box-sizing: border-box; /* Ensure padding is included in width calculation */        
+      }
+
+     
+      #searchTopRow {
+        flex-wrap: wrap;
+        gap: 6px !important;
+      }
+
+      #toggleViewBtn {
+        font-size: 12px;
+        padding: 6px 8px;
+        min-width: 60px;
+        order: 3; /* Place after hamburger and search input */
+        flex-shrink: 0;
+      }
+
+      .search-block {
+        min-width: 0; /* Allow shrinking */
+      }
+
+      #serviceSearchInput {
+        font-size: 14px;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+
+
+      #featureDatasetsMenu {
+        max-height: 150px;
+        font-size: 14px;
+        padding: 6px 8px;
+      }
+
+      #measurementDiv, #scaleBarDiv {
+        position: fixed;
+        top: auto;
+        bottom: 12px;
+        right: 12px;
+        left: auto;
+        z-index: 100;
+        background: white;
+        padding: 8px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+
+      #scaleBarDiv {
+        bottom: 60px;
+        left: 12px;
+        right: auto;
+      }
+
+      label {
+        font-size: 12px; /* Smaller font size for labels */
+      }
+
+      input[type="text"] {
+        font-size: 14px; /* Smaller font size for inputs */
+        padding: 12px; /* Larger padding for touch targets */
+      }
+
+      .suggestions div {
+        padding: 12px; /* Larger padding for suggestions */
+      }
+
+      #hamburgerMenu svg {
+        width: 28px;
+        height: 28px;
+        stroke-width: 3;
+      }
+    }
+
+    /* Standard mobile portrait mode */
+    @media (max-width: 600px) and (orientation: portrait) {
+      #basemapContainer {
+        top: 10%;
+        right: 8px;
+        padding: 6px;
+        min-width: 100px;
+        max-width: 140px;
+      }
+
+      
+    }
+
+    /* Extra small screens */
+    @media (max-width: 480px) {
+      #basemapContainer {
+        top: 15%;
+        right: 8px;
+        padding: 6px;
+        min-width: 80px;
+        max-width: 120px;
+      }
+
+      #basemapToggle {
+        font-size: 10px;
+        padding: 5px 6px;
+      }
+
+      .basemap-option {
+        font-size: 10px;
+        padding: 5px 6px;
+      }
+    }
+
+   
+  </style>
+</head>
+<body>
+
+  <div id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading 3D Map</div>
+    <div class="loading-progress">
+      <span id="loadingStatus">Initializing</span><span class="loading-dots"></span>
+    </div>
+  </div>
+
+  <div id="searchContainer">
+      <div id="searchTopRow" style="display:flex; align-items:center; gap:8px;">
+        <button id="hamburgerMenu" aria-label="Toggle feature datasets menu" title="Feature Datasets Menu" style="background:none; border:none; cursor:pointer; padding:0; margin-right:8px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="search-block" id="serviceSearchBlock" style="flex-grow: 1;">
+          <label for="serviceSearchInput" style="display:none;">Search layers across services</label>
+          <input type="text" id="serviceSearchInput" placeholder="Search for layers across services..." autocomplete="off" aria-label="Search for layers" />
+          <div id="serviceSuggestions" class="suggestions" role="listbox"></div>
+        </div>
+        <button id="toggleViewBtn">Switch 2D</button>
+      </div>
+    <div id="featureDatasetsMenu" class="feature-datasets-menu" style="display:none; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin-bottom: 8px; padding: 4px 0; z-index: 1001; position: relative;">
+      <!-- Feature datasets will be populated here -->
+    </div>
+    <div class="search-block" id="featureSearchBlock" style="display:none;">
+      <label for="featureSearchInput">Search features in loaded layer</label>
+      <input type="text" id="featureSearchInput" placeholder="Search features in layer..." autocomplete="off" aria-label="Search features in layer" />
+      <div id="featureSuggestions" class="suggestions" role="listbox"></div>
+    </div>
+  </div>
+
+  <!-- Basemap Selector -->
+  <div id="basemapContainer">
+    <button id="basemapToggle" aria-label="Select basemap" title="Change Basemap">
+      <span id="currentBasemapName">Streets</span>
+      <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6,9 12,15 18,9"></polyline>
+      </svg>
+    </button>
+    <div id="basemapOptions">
+      <!-- Basemap options will be populated here -->
+    </div>
+  </div>
+
+  <div id="viewDiv"></div>
+  <!-- <div id="measurementDiv" style="position:absolute; top:12px; right:12px; z-index: 100; background:white; padding:8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div> -->
+  <div id="scaleBarDiv" style="position:absolute; bottom:12px; left:12px; z-index: 100; background:white; padding:4px 8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+
+  <div id="myPopup" class="my-popup hidden">
+    <div class="my-popup-content"></div>
+    <button id="closePopup">X</button>
+  </div>
+
+   <!-- Custom popup HTML -->
+  <div id="popup-overlay"></div>
+  <div id="custom-popup">
+      <h3 id="popup-title">Feature Details</h3>
+      <ul id="popup-attributes"></ul> <!-- Container for dynamic attributes -->
+      <button onclick="closeCustomPopup()">Close</button>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/WebScene",
+      "esri/views/MapView",
+      "esri/views/SceneView",
+      "esri/layers/FeatureLayer",
+      "esri/layers/SceneLayer",
+      "esri/layers/VectorTileLayer",
+      "esri/geometry/geometryEngine",
+      "esri/widgets/Measurement",
+      "esri/widgets/ScaleBar",
+      "esri/time/TimeExtent",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/symbols/PointSymbol3D",
+      "esri/symbols/ObjectSymbol3DLayer",
+      "esri/layers/GeoJSONLayer",
+      "esri/symbols/PictureMarkerSymbol"
+      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, GeoJSONLayer, PictureMarkerSymbol) {
+ 
+
+      // Loading management
+      let loadingSteps = {
+        mapReady: false,
+        servicesLoaded: false,
+        geolocationComplete: false
+      };
+
+      function updateLoadingStatus(step, message) {
+        const statusElement = document.getElementById('loadingStatus');
+        if (statusElement) {
+          statusElement.textContent = message;
+        }
+        
+        loadingSteps[step] = true;
+        console.log(`Loading step completed: ${step} - ${message}`);
+        
+        // Check if all steps are complete
+        if (Object.values(loadingSteps).every(step => step === true)) {
+          hideLoadingOverlay();
+        }
+      }
+
+      function hideLoadingOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+          overlay.classList.add('fade-out');
+          setTimeout(() => {
+            overlay.style.display = 'none';
+          }, 500);
+        }
+      }
+
+
+      // 1. Updated basemap configurations
+      const basemapConfigs = [
+        { id: "streets", name: "Streets", type: "esri" },
+        { id: "satellite", name: "Satellite", type: "esri" },
+        { id: "hybrid", name: "Hybrid", type: "esri" },
+        { id: "topo", name: "Topographic", type: "esri" },
+        { id: "gray", name: "Light Gray", type: "esri" },
+        { id: "dark-gray", name: "Dark Gray", type: "esri" },
+        { id: "oceans", name: "Oceans", type: "esri" },
+        { id: "osm", name: "OpenStreetMap", type: "esri" },
+        { id: "terrain", name: "Terrain", type: "esri" },
+        { id: "national-geographic", name: "National Geographic", type: "esri" },
+        { id: "streets-night", name: "Streets (Night)", type: "esri" },
+        { id: "streets-navigation", name: "Streets Navigation", type: "esri" },
+        // Vector Tile options
+        { 
+          id: "streets-vector", 
+          name: "Streets Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "topo-vector", 
+          name: "Topographic Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "gray-vector", 
+          name: "Light Gray Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "dark-gray-vector", 
+          name: "Dark Gray Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "streets-navigation-vector", 
+          name: "Streets Navigation Vector", 
+          type: "esri" 
+        },
+        { 
+          id: "streets-night-vector", 
+          name: "Streets Night Vector", 
+          type: "esri" 
+        },
+        // Custom Vector Tile Layer
+        { 
+          id: "custom-vector", 
+          name: "Custom Vector Tiles", 
+          type: "vector-tile",
+          url: "https://basemaps.arcgis.com/arcgis/rest/services/OpenBasemap_v2/VectorTileServer"
+        }
+      ];
+
+      let currentBasemapId = "streets";
+
+      // Basemap UI Elements
+      const basemapToggle = document.getElementById("basemapToggle");
+      const basemapOptions = document.getElementById("basemapOptions");
+      const currentBasemapName = document.getElementById("currentBasemapName");
+      const dropdownArrow = basemapToggle.querySelector(".dropdown-arrow");
+
+      // Populate basemap options
+      function populateBasemapOptions() {
+        basemapOptions.innerHTML = "";
+        basemapConfigs.forEach(config => {
+          const button = document.createElement("button");
+          button.className = "basemap-option";
+          button.textContent = config.name;
+          button.setAttribute("data-basemap-id", config.id);
+          
+          if (config.id === currentBasemapId) {
+            button.classList.add("active");
+          }
+          
+          button.addEventListener("click", () => {
+            changeBasemap(config.id, config.name);
+            toggleBasemapDropdown(false);
+          });
+          
+          basemapOptions.appendChild(button);
+        });
+      }
+
+      // Toggle basemap dropdown
+      function toggleBasemapDropdown(show) {
+        const isOpen = show !== undefined ? show : basemapOptions.style.display === "none";
+        basemapOptions.style.display = isOpen ? "flex" : "none";
+        dropdownArrow.classList.toggle("open", isOpen);
+      }
+
+      // 2. Updated changeBasemap function (replace the existing changeBasemap function)
+      function changeBasemap(basemapId, basemapName) {
+        currentBasemapId = basemapId;
+        currentBasemapName.textContent = basemapName;
+        
+        // Find the basemap config
+        const basemapConfig = basemapConfigs.find(config => config.id === basemapId);
+        
+        if (basemapConfig && basemapConfig.type === "vector-tile") {
+          // Handle custom vector tile layer
+          const vectorTileLayer = new VectorTileLayer({
+            url: basemapConfig.url
+          });
+          
+          // Create a new basemap with the vector tile layer
+          const customBasemap = {
+            baseLayers: [vectorTileLayer]
+          };
+          
+          scene.basemap = customBasemap;
+        } else {
+          // Handle standard Esri basemaps
+          scene.basemap = basemapId;
+        }
+        
+        // Update active states in dropdown
+        const options = basemapOptions.querySelectorAll(".basemap-option");
+        options.forEach(option => {
+          option.classList.toggle("active", option.getAttribute("data-basemap-id") === basemapId);
+        });
+      }
+
+      // Basemap toggle event listener
+      basemapToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleBasemapDropdown();
+      });
+
+      // Close basemap dropdown when clicking outside
+      document.addEventListener("click", (e) => {
+        if (!basemapToggle.contains(e.target) && !basemapOptions.contains(e.target)) {
+          toggleBasemapDropdown(false);
+        }
+      });
+
+      // Initialize basemap options
+      populateBasemapOptions();
+      
+
+      // List of Feature Layer Service URLs to search through
+      const serviceUrls = [
+        "https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer",
+        "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer",
+        "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer",
+        "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Water_Network/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/arcgis/rest/services/OSM_AS_POIs/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Buildings/FeatureServer/",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Amenities/FeatureServer/",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Shops/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Leisure/FeatureServer",
+        "https://services-ap1.arcgis.com/iA7fZQOnjY9D67Zx/ArcGIS/rest/services/OSM_AS_Highways/FeatureServer"
+    ];
+
+    // const geocodeServiceUrl = "https://nominatim.openstreetmap.org/search";
+    // const geocodeServiceUrl = "https://api.mapbox.com/search/geocode/v6/forward";
+    const geocodeServiceUrl = "https://api.mapbox.com/search/searchbox/v1/suggest"
+    const geocodeRetrieveUrl = "https://api.mapbox.com/search/searchbox/v1/retrieve"
+    const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiZ3NyMTciLCJhIjoiY21ia3hudTA1MGx1bzJqcXY5bGc3ZXI1ZCJ9.XahvXYmDAts7i3YVd2KoQg"; // Replace with your actual token
+
+    // New code for hamburger menu functionality
+    const hamburgerMenu = document.getElementById("hamburgerMenu");
+    const featureDatasetsMenu = document.getElementById("featureDatasetsMenu");
+    let userLocation = {};
+    let addressSearchData = [];
+    let isSearchingAddresses = false;
+
+    // Populate the feature datasets menu with layerInfos
+    function populateFeatureDatasetsMenu() {
+      featureDatasetsMenu.innerHTML = "";
+      if (!layerInfos || layerInfos.length === 0) {
+        const noDataDiv = document.createElement("div");
+        noDataDiv.textContent = "No feature datasets available";
+        noDataDiv.style.padding = "8px 12px";
+        featureDatasetsMenu.appendChild(noDataDiv);
+        return;
+      }
+      layerInfos.forEach((layer, index) => {
+        const itemDiv = document.createElement("div");
+        itemDiv.textContent = layer.name;
+        itemDiv.title = layer.name + " (" + layer.serviceName + ")";
+        itemDiv.tabIndex = 0;
+        itemDiv.style.outline = "none";
+        itemDiv.addEventListener("click", () => {
+          loadLayer(layer);
+          serviceSearchInput.value = layer.name || "";
+          featureDatasetsMenu.style.display = "none";
+        });
+        itemDiv.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            loadLayer(layer);
+            serviceSearchInput.value = layer.name || "";
+            featureDatasetsMenu.style.display = "none";
+          }
+        });
+        featureDatasetsMenu.appendChild(itemDiv);
+      });
+    }
+
+    // Toggle menu visibility on hamburger click
+    hamburgerMenu.addEventListener("click", () => {
+      if (featureDatasetsMenu.style.display === "block") {
+        featureDatasetsMenu.style.display = "none";
+      } else {
+        populateFeatureDatasetsMenu();
+        featureDatasetsMenu.style.display = "block";
+        // When menu opens, also filter based on current input value
+        const inputVal = serviceSearchInput.value.trim().toLowerCase();
+        if (inputVal.length > 0) {
+          filterFeatureDatasetsMenu(inputVal);
+        }
+      }
+    });
+
+    // Close menu if clicking outside, but not if clicking inside search input or hamburger
+    document.addEventListener("click", (event) => {
+      if (!hamburgerMenu.contains(event.target) && !featureDatasetsMenu.contains(event.target) && !serviceSearchInput.contains(event.target)) {
+        featureDatasetsMenu.style.display = "none";
+      }
+    });
+
+    // Filter feature datasets menu items based on input string
+    function filterFeatureDatasetsMenu(filterText) {
+      const items = featureDatasetsMenu.children;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const text = item.textContent.toLowerCase();
+        if (text.includes(filterText)) {
+          item.style.display = "";
+        } else {
+          item.style.display = "none";
+        }
+      }
+    }
+
+    // Filter feature datasets menu items based on input string
+    function filterFeatureDatasetsMenu(filterText) {
+      const items = featureDatasetsMenu.children;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const text = item.textContent.toLowerCase();
+        if (text.includes(filterText)) {
+          item.style.display = "";
+        } else {
+          item.style.display = "none";
+        }
+      }
+    }
+
+      
+      // Create a WebScene with a basemap
+      const scene = new WebScene({
+        // layers: [vectorTileLayer],
+        basemap: "streets", // Add a basemap for context
+        ground: "world-elevation" // Add elevation for 3D terrain
+      });
+
+      const layer = new SceneLayer({
+        // URL to the service
+        url: "https://basemaps3d.arcgis.com/arcgis/rest/services/Esri3D_Buildings_v1/SceneServer/layers/0"
+      });
+
+      scene.add(layer)
+      // Removed unused map variable
+      // let map = new Map({
+      //   basemap: "streets-vector"
+      // });
+
+
+
+      // let view = new MapView({
+      let view = new SceneView({
+        container: "viewDiv",
+        map: scene,
+        camera: {
+            position: {
+                x: 103.8198, // Longitude
+                y: 1.3521,   // Latitude
+                z: 5000      // Camera height in meters
+            },
+            tilt: 45, // Tilt angle
+            heading: 0
+        }, // Heading angle
+        padding: {
+          top: 40
+        }
+      });
+
+      view.popupEnabled = false;
+
+       // Add click event to show custom popup with all attributes
+      view.on("click", function(event) {
+          view.hitTest(event).then(function(response) {
+              const graphic = response.results[0]?.graphic;
+              if (graphic && graphic.attributes) {
+                  // Set title
+                  document.getElementById("popup-title").textContent = "All Feature Attributes";
+                  // Dynamically build list of all attributes
+                  const attributesList = document.getElementById("popup-attributes");
+                  attributesList.innerHTML = ""; // Clear previous content
+                  for (const [key, value] of Object.entries(graphic.attributes)) {
+                      const listItem = document.createElement("li");
+                      listItem.innerHTML = `<strong>${key}:</strong> ${value || 'N/A'}`;
+                      attributesList.appendChild(listItem);
+                  }
+                  showCustomPopup();
+              }
+          });
+      });
+
+     
+
+
+
+      // view.on("click", function(event) {
+      //   view.hitTest(event).then(function(response) {
+      //       const graphic = response.results[0]?.graphic;
+      //       if (graphic && graphic.attributes) {
+      //           // Set title
+      //           document.getElementById("popup-title").textContent = "All Feature Attributes";
+      //           // Dynamically build list of all attributes
+      //           const attributesList = document.getElementById("popup-attributes");
+      //           attributesList.innerHTML = ""; // Clear previous content
+      //           for (const [key, value] of Object.entries(graphic.attributes)) {
+      //               const listItem = document.createElement("li");
+      //               listItem.innerHTML = `<strong>${key}:</strong> ${value || 'N/A'}`;
+      //               attributesList.appendChild(listItem);
+      //           }
+      //           showCustomPopup();
+      //       }
+      //   });
+      // });
+
+
+      document.getElementById("closePopup").onclick = () => {
+        document.getElementById("myPopup").classList.add("hidden");
+      };
+
+
+      // Create a MapView for 2D
+      let mapView = new MapView({
+        container: null, // Initially not attached
+        map: scene,
+        center: [103.8198, 1.3521],
+        zoom: 12,
+        padding: {
+          top: 40
+        }
+      });
+
+      // Current active view
+      let activeView = view;
+
+      // Toggle button event listener
+      const toggleViewBtn = document.getElementById("toggleViewBtn");
+      toggleViewBtn.addEventListener("click", () => {
+        if (activeView === view) {
+          // Switch to 2D MapView
+          // Sync center and zoom from 3D view to 2D view
+          mapView.center = view.center;
+          mapView.zoom = view.zoom;
+          view.container = null;
+          mapView.container = "viewDiv";
+          activeView = mapView;
+          toggleViewBtn.textContent = "Switch 3D";
+
+          // Update extent watch for activeView change
+          if (extentWatchHandle) {
+            extentWatchHandle.remove();
+          }
+          extentWatchHandle = activeView.watch("extent", function(newExtent) {
+            debouncedQueryFeaturesForSearch();
+          });
+        } else {
+          // Switch to 3D SceneView
+          // Sync center and zoom from 2D view to 3D view
+          view.center = mapView.center;
+          view.zoom = mapView.zoom;
+          mapView.container = null;
+          view.container = "viewDiv";
+          activeView = view;
+          toggleViewBtn.textContent = "Switch 2D";
+
+          // Update extent watch for activeView change
+          if (extentWatchHandle) {
+            extentWatchHandle.remove();
+          }
+          extentWatchHandle = activeView.watch("extent", function(newExtent) {
+            debouncedQueryFeaturesForSearch();
+          });
+        }
+      });
+
+      view.when(function() {
+
+        updateLoadingStatus('mapReady', 'Map loaded successfully');
+
+        view.environment.lighting = {
+            date: new Date('2023-10-01T12:00:00+08:00'), // Set to noon in Singapore time
+            directShadowsEnabled: false, // Disabled shadows for performance
+            ambientOcclusionEnabled: false, // Disabled ambient occlusion for performance
+            illumination: "day", // Set to day
+            sun: {
+                azimuth: 180, // Sun's azimuth angle (degrees)
+                altitude: 45   // Sun's altitude angle (degrees)
+            }
+        };
+
+      // Zoom to current location if GPS is available
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            userLocation = {
+              longitude: position.coords.longitude,
+              latitude: position.coords.latitude
+            };
+
+            // Create a point geometry for the user's location on the ground
+            const groundPoint = new Point({
+              longitude: userLocation.longitude,
+              latitude: userLocation.latitude,
+              z: 0
+            });
+
+            // Define height for the vertical line and marker offset
+            const lineHeight = 100;
+
+            // Create a point geometry for the top of the vertical line (above buildings)
+            const topPoint = new Point({
+              longitude: userLocation.longitude,
+              latitude: userLocation.latitude,
+              z: lineHeight
+            });
+
+            const userPoint2D = new Point({
+              longitude: userLocation.longitude,
+              latitude: userLocation.latitude,
+            });
+
+
+            // Create a polyline geometry for the vertical line from ground to topPoint
+            const verticalLine = {
+              type: "polyline",
+              paths: [
+                [groundPoint.longitude, groundPoint.latitude, groundPoint.z],
+                [topPoint.longitude, topPoint.latitude, topPoint.z]
+              ],
+              spatialReference: { wkid: 4326 }
+            };
+
+            // Create a simple line symbol for the vertical line
+            const lineSymbol = {
+              type: "line-3d",
+              symbolLayers: [{
+                type: "line",
+                material: { color: "orange" },
+                size: 2
+              }]
+            };
+
+            // Create a graphic for the vertical line
+            const lineGraphic = new Graphic({
+              geometry: verticalLine,
+              symbol: lineSymbol
+            });
+
+            // Create a picture marker symbol for the user location at the top of the line
+            const markerSymbol = {
+              type: "picture-marker",
+              url: "https://static.arcgis.com/images/Symbols/Shapes/BluePin1LargeB.png",
+              width: "32px",
+              height: "32px",
+              // Optional: offset the marker vertically so it sits above the line end
+              yoffset: 16
+            };
+
+            // Create a graphic for the user marker at the topPoint
+            const userGraphic = new Graphic({
+              geometry: topPoint,
+              symbol: markerSymbol
+            });
+
+            const user2DGraphic = new Graphic({
+              geometry: userPoint2D,
+              symbol: markerSymbol
+            });
+
+            // Add the line and marker graphics to the view
+            view.graphics.addMany([lineGraphic, userGraphic]);
+            mapView.graphics.addMany([user2DGraphic]);
+
+            // Zoom to the user's location at zoom 17
+            view.goTo({
+              target: [userLocation.longitude, userLocation.latitude],
+              zoom: 17
+            }).catch(function(error) {
+              console.error("Error zooming to user location:", error);
+            });
+
+            updateLoadingStatus('geolocationComplete', 'Location found');
+          },
+          function(error) {
+            console.warn("Geolocation error:", error.message);
+            updateLoadingStatus('geolocationComplete', 'Using default location');
+            // Keep default view if error or permission denied
+          }
+        );
+      } else {
+        console.warn("Geolocation is not supported by this browser.");
+        updateLoadingStatus('geolocationComplete', 'Using default location');
+      }
+      });
+
+      // Debounce function to limit frequency of calls
+      function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+          clearTimeout(timeout);
+          return new Promise((resolve) => {
+            timeout = setTimeout(() => resolve(func.apply(this, args)), wait);
+          });
+        };
+      }
+
+      function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      }
+
+      const uuid = generateUUID();
+
+      let currentRequestId = 0;
+      let currentAbortController = null;
+
+      const debouncedAddressSearch = debounce(async (searchText, requestId) => {
+        if (searchText.length < 3) {
+          return [];
+        }
+
+        if (currentAbortController) {
+          currentAbortController.abort();
+        }
+        currentAbortController = new AbortController();
+        const signal = currentAbortController.signal;
+
+        try {
+          isSearchingAddresses = true;
+
+          // Build Mapbox Geocoding API query URL
+          const encodedQuery = encodeURIComponent(searchText);
+          const params = new URLSearchParams({
+            q: searchText,
+            access_token: MAPBOX_ACCESS_TOKEN,
+            country: 'SG', // Focus on Singapore
+            limit: '10',
+            types: 'poi', // Include addresses, points of interest, and places
+            session_token: uuid
+          });
+
+          const response = await fetch(`${geocodeServiceUrl}?${params}`, { signal });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          // console.log('Raw Mapbox data:', data);
+
+          if (!data.suggestions || !Array.isArray(data.suggestions)) {
+            console.warn('No suggestions found in response');
+            return [];
+          }
+
+          const transformedResults = data.suggestions.map(item => {
+            const context = item.context || {};
+
+            return {
+              address: item.full_address || item.name || 'Unknown location',
+              location: {
+                x: null,
+                y: null,
+                longitude: null,
+                latitude: null,
+                spatialReference: { wkid: 4326 }
+              },
+              score: 100,
+              attributes: {
+                City: context.place?.name || 'Singapore',
+                Region: context.place?.name || '',
+                Country: context.country?.name || 'Singapore',
+                PostalCode: context.postcode?.name || '',
+                MapboxId: item.mapbox_id,
+                FeatureType: item.feature_type,
+                Category: item.poi_category?.join(', ') || '',
+                Name: item.name,
+                Address: item.address
+              }
+            };
+          }).filter(Boolean);
+
+          // console.log('Final transformed results:', transformedResults);
+          return { results: transformedResults, requestId };
+
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            console.log('Fetch aborted for requestId:', requestId);
+          } else {
+            console.error("Address search error:", error);
+          }
+          return { results: [], requestId };
+        } finally {
+          isSearchingAddresses = false;
+        }
+      }, 300);
+
+      function onServiceInput(e) {
+        const input = e.target.value.trim().toLowerCase();
+        if (input.length === 0) {
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+          addressSearchData = [];
+          if (featureDatasetsMenu.style.display === "block") {
+            populateFeatureDatasetsMenu();
+          }
+          return;
+        }
+
+        if (featureDatasetsMenu.style.display === "block") {
+          filterFeatureDatasetsMenu(input);
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+        } else {
+          const filteredLayers = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
+          if (input.length >= 3) {
+            currentRequestId++;
+            const requestId = currentRequestId;
+            debouncedAddressSearch(input, requestId).then(({ results, requestId: resId }) => {
+              if (resId === currentRequestId) {
+                addressSearchData = results.results;
+                console.log(addressSearchData);
+                renderCombinedSuggestions(results, filteredLayers);
+              } else {
+                console.log('Discarding stale response for requestId:', resId);
+              }
+            });
+          } else {
+            addressSearchData = [];
+            renderCombinedSuggestions(filteredLayers, []);
+          }
+        }
+      }
+
+      
+
+
+      // Lazy load Measurement widget after view is ready
+      let measurement;
+      view.when(() => {
+        setTimeout(() => {
+          measurement = new Measurement({
+            view: view,
+            container: "measurementDiv"
+          });
+        }, 2000); // Delay 2 seconds to reduce initial load
+      });
+
+      // Add ScaleBar widget
+      const scaleBar = new ScaleBar({
+        view: view,
+        container: "scaleBarDiv",
+        unit: "metric" // or "dual" for metric and imperial
+      });
+
+      // Create a div to display current center location and zoom level
+      const locationInfoDiv = document.createElement("div");
+      locationInfoDiv.style.position = "absolute";
+      locationInfoDiv.style.bottom = "12px";
+      locationInfoDiv.style.right = "12px";
+      locationInfoDiv.style.zIndex = "101";
+      locationInfoDiv.style.backgroundColor = "rgba(255, 255, 255, 0.8)";
+      locationInfoDiv.style.padding = "6px 10px";
+      locationInfoDiv.style.borderRadius = "6px";
+      locationInfoDiv.style.fontSize = "14px";
+      locationInfoDiv.style.fontFamily = "Arial, sans-serif";
+      locationInfoDiv.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+      locationInfoDiv.style.userSelect = "none";
+      locationInfoDiv.textContent = "Loading location...";
+      view.container.appendChild(locationInfoDiv);
+
+      
+      // Combined sublayers list
+      let layerInfos = [];
+      let loadedFeatureLayer = null;
+      let layerView = null;
+      let highlightHandle = null;
+
+
+
+      // Features data for current loaded layer for feature search
+      let featureSearchData = [];
+      // Suitable field name (string) to display & search by in feature search
+      let featureSearchField = null;
+
+
+
+      // Elements for service layer search
+      const serviceSearchInput = document.getElementById("serviceSearchInput");
+      const serviceSuggestions = document.getElementById("serviceSuggestions");
+      let serviceSelectedIndex = -1;
+
+
+
+      // Elements for feature data search
+      const featureSearchBlock = document.getElementById("featureSearchBlock");
+      const featureSearchInput = document.getElementById("featureSearchInput");
+      const featureSuggestions = document.getElementById("featureSuggestions");
+      let featureSelectedIndex = -1;
+
+
+
+      // Fetch all service metadata for sublayers
+      Promise.all(serviceUrls.map(url =>
+        fetch(url + "?f=json")
+          .then(response => response.json())
+          .then(serviceJson => {
+            if (serviceJson.error) throw new Error(serviceJson.error.message);
+            const serviceName = serviceJson.serviceDescription;
+            return (serviceJson.layers || []).map(layer => ({
+              id: layer.id,
+              name: layer.name || ("Layer " + layer.id),
+              url: url + "/" + layer.id,
+              serviceUrl: url,
+              serviceName: serviceName
+            }));
+          })
+          .catch(err => {
+            console.error(`Failed to load metadata from ${url}`, err);
+            return [];
+          })
+      )).then(results => {
+        layerInfos = results.flat();
+        updateLoadingStatus('servicesLoaded', 'Services loaded');
+        if (layerInfos.length === 0) {
+          alert("No feature layers found in the specified services.");
+        }
+        initServiceSearch();
+      });
+
+
+
+      function initServiceSearch() {
+        serviceSearchInput.addEventListener("input", onServiceInput);
+        serviceSearchInput.addEventListener("keydown", onServiceKeyDown);
+        document.addEventListener("click", onDocumentClick);
+      }
+
+
+
+      // --- Service Search ---
+
+
+      // 5. Replace the onServiceInput function completely
+      function onServiceInput(e) {
+        const input = e.target.value.trim().toLowerCase();
+        if (input.length === 0) {
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+          addressSearchData = [];
+          // Also reset feature datasets menu to full list if open
+          if (featureDatasetsMenu.style.display === "block") {
+            populateFeatureDatasetsMenu();
+          }
+          return;
+        }
+        
+        if (featureDatasetsMenu.style.display === "block") {
+          // When menu is open, only filter the menu items and hide service suggestions
+          filterFeatureDatasetsMenu(input);
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+        } else {
+          // When menu is closed, show both layer and address suggestions
+          const filteredLayers = layerInfos.filter(layer => layer.name.toLowerCase().includes(input));
+          
+          // Search for addresses if input is long enough
+          if (input.length >= 3) {
+            debouncedAddressSearch(input).then(addressResults => {
+              addressSearchData = addressResults;
+              console.log(addressSearchData)
+              renderCombinedSuggestions(addressResults, filteredLayers);
+            });
+          } else {
+            addressSearchData = [];
+            renderCombinedSuggestions(filteredLayers, []);
+          }
+        }
+      }
+
+
+      function renderServiceSuggestions(layers) {
+        clearServiceSuggestions();
+        if (layers.length === 0) {
+          hideServiceSuggestions();
+          return;
+        }
+        layers.forEach((layer, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.layerId = layer.id;
+          div.dataset.serviceUrl = layer.serviceUrl;
+          div.textContent = layer.name;
+
+
+
+          const serviceSpan = document.createElement("span");
+          serviceSpan.className = "service-name";
+          div.appendChild(serviceSpan);
+
+
+
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault(); // Prevent input blur
+            selectServiceSuggestion(idx);
+            loadLayer(layer);
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+          });
+
+
+
+          serviceSuggestions.appendChild(div);
+        });
+        serviceSelectedIndex = -1;
+        showServiceSuggestions();
+      }
+
+
+      function renderCombinedSuggestions(addresses,layers) {
+        clearServiceSuggestions();
+        
+        let totalResults = layers.length + addresses.length;
+        if (totalResults === 0) {
+          hideServiceSuggestions();
+          return;
+        }
+        
+        let index = 0;
+        
+        // Add address results first
+        // console.log("display",addresses)
+        addresses.results.forEach((address, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.type = "address";
+          div.dataset.addressIndex = idx;
+          div.style.borderLeft = "3px solid #28a745"; // Green border for addresses
+          
+          const mainText = address.attributes.Name || "Unknown Address";
+          const locationText = address.address ? 
+            `${address.attributes.Address || ''}, Singapore ${address.attributes.PostalCode || ''}`.replace(/^,\s*|,\s*$/, '') : '';
+          
+          div.innerHTML = `
+            <div style="font-weight: bold;padding:0px;">${mainText}</div>
+            <div style="font-size: 0.8em; color: #666; font-style: italic;padding:0px;">📍 ${locationText}</div>
+          `;
+          
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault();
+            selectServiceSuggestion(index);
+            serviceSearchInput.value = mainText;
+            zoomToAddress(address);
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+          });
+          
+          serviceSuggestions.appendChild(div);
+          index++;
+        });
+        
+        // Add layer results
+        layers.forEach((layer, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.type = "layer";
+          div.dataset.layerId = layer.id;
+          div.dataset.serviceUrl = layer.serviceUrl;
+          div.style.borderLeft = "3px solid #007bff"; // Blue border for layers
+          
+          div.innerHTML = `<div style="font-weight: normal;padding:0px;">${layer.name}</div>`;
+
+          // <div style="font-size: 0.8em; color: #666; font-style: italic;">🗺️ ${layer.serviceName || 'Feature Layer'}</div>
+          
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault();
+            selectServiceSuggestion(index);
+            loadLayer(layer);
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+          });
+          
+          serviceSuggestions.appendChild(div);
+          index++;
+        });
+        
+        serviceSelectedIndex = -1;
+        showServiceSuggestions();
+      }
+
+      function clearServiceSuggestions() {
+        while (serviceSuggestions.firstChild) {
+          serviceSuggestions.firstChild.remove();
+        }
+      }
+
+
+
+      function showServiceSuggestions() {
+        serviceSuggestions.style.display = "block";
+      }
+
+
+
+      function hideServiceSuggestions() {
+        serviceSuggestions.style.display = "none";
+      }
+
+
+      function onServiceKeyDown(e) {
+        const items = serviceSuggestions.children;
+        if (!items.length) return;
+
+        switch (e.key) {
+          case "ArrowDown":
+            e.preventDefault();
+            if (serviceSelectedIndex < items.length - 1) {
+              serviceSelectedIndex++;
+              updateServiceSuggestionHighlight();
+            }
+            break;
+          case "ArrowUp":
+            e.preventDefault();
+            if (serviceSelectedIndex > 0) {
+              serviceSelectedIndex--;
+              updateServiceSuggestionHighlight();
+            }
+            break;
+          case "Enter":
+            e.preventDefault();
+            if (serviceSelectedIndex >= 0 && serviceSelectedIndex < items.length) {
+              const selectedItem = items[serviceSelectedIndex];
+              const itemType = selectedItem.dataset.type;
+              
+              if (itemType === "address") {
+                const addressIndex = parseInt(selectedItem.dataset.addressIndex);
+                const address = addressSearchData.results[addressIndex];
+                serviceSearchInput.value = address.address || "";
+                zoomToAddress(address);
+              } else if (itemType === "layer") {
+                const layerId = selectedItem.dataset.layerId;
+                const serviceUrl = selectedItem.dataset.serviceUrl;
+                const layer = layerInfos.find(l => l.id == layerId && l.serviceUrl === serviceUrl);
+                if (layer) {
+                  loadLayer(layer);
+                }
+              }
+              
+              clearServiceSuggestions();
+              hideServiceSuggestions();
+            } else {
+              // Handle direct input matching
+              const inputVal = serviceSearchInput.value.trim().toLowerCase();
+              const matchLayer = layerInfos.find(l => l.name.toLowerCase() === inputVal);
+              if (matchLayer) {
+                loadLayer(matchLayer);
+              } else if (inputVal.length >= 3) {
+                // Try address search for exact match
+                debouncedAddressSearch(inputVal).then(addressResults => {
+                  if (addressResults.length > 0) {
+                    zoomToAddress(addressResults[0]);
+                  }
+                });
+              }
+              clearServiceSuggestions();
+              hideServiceSuggestions();
+            }
+            break;
+          case "Escape":
+            clearServiceSuggestions();
+            hideServiceSuggestions();
+            break;
+        }
+      }
+
+      function updateServiceSuggestionHighlight() {
+        const items = serviceSuggestions.children;
+        for (let i = 0; i < items.length; i++) {
+          if (i === serviceSelectedIndex) {
+            items[i].classList.add("selected");
+            items[i].setAttribute("aria-selected", "true");
+          } else {
+            items[i].classList.remove("selected");
+            items[i].setAttribute("aria-selected", "false");
+          }
+        }
+      }
+
+
+
+      function selectServiceSuggestion(index) {
+        const items = serviceSuggestions.children;
+        if (index >= 0 && index < items.length) {
+          serviceSelectedIndex = index;
+          updateServiceSuggestionHighlight();
+          serviceSearchInput.value = items[index].textContent.trim();
+        }
+      }
+
+
+
+      // --- Feature Layer Loaded & Feature Search ---
+
+
+
+      // Load feature layer and initialize feature search data
+      function loadLayer(layerInfo) {
+        if (!layerInfo) return;
+
+
+
+        if (loadedFeatureLayer) {
+          scene.remove(loadedFeatureLayer);
+          loadedFeatureLayer = null;
+          if (highlightHandle) {
+            highlightHandle.remove();
+            highlightHandle = null;
+          }
+          view.popup.close();
+        }
+
+
+
+        // Hide feature search while loading new layer
+        hideFeatureSearch();
+
+
+
+        loadedFeatureLayer = new FeatureLayer({
+          url: layerInfo.url,
+          outFields: ["*"],
+          popupTemplate: {
+            title: "{Name}",
+            content: function(feature) {
+              const attrs = feature.graphic.attributes;
+              let contentHtml = "<table style='width: 100%;border-collapse: collapse;'>";
+              for (const key in attrs) {
+                if (attrs.hasOwnProperty(key)) {
+                  contentHtml += "<tr><td style='font-weight: bold; border: 1px solid #ddd; padding:4px;'>" +
+                                  key + "</td><td style='border: 1px solid #ddd; padding:4px;'>" +
+                                  attrs[key] + "</td></tr>";
+                }
+              }
+              contentHtml += "</table>";
+              return contentHtml;
+            }
+          }
+        });
+
+
+
+        scene.add(loadedFeatureLayer);
+
+
+
+        activeView.whenLayerView(loadedFeatureLayer).then(lv => {
+          layerView = lv;
+          // Query features for feature search
+          queryFeaturesForSearch(loadedFeatureLayer).then(() => {
+            // Show feature search input once data ready
+            showFeatureSearch();
+          }).catch(err => {
+            console.warn("Failed to query features for search:", err);
+            // Still show feature search but will be empty
+            featureSearchData = [];
+            showFeatureSearch();
+          });
+
+          // Ensure highlight is refreshed on view change to fix 2D highlight issue
+          activeView.watch("updating", (isUpdating) => {
+            if (!isUpdating && highlightHandle) {
+              // highlightHandle.remove();
+              // Re-highlight the last highlighted feature
+              if (highlightHandle.feature) {
+                highlightHandle = layerView.highlight(highlightHandle.feature);
+              }
+            }
+          });
+
+
+
+          if (activeView.popup && typeof activeView.popup.close === "function") {
+            activeView.popup.close();
+          }
+          if (highlightHandle) {
+            highlightHandle.remove();
+            highlightHandle = null;
+          }
+
+
+
+          // Remove previous click handlers if any
+          if (activeView._clickHandler) {
+            activeView._clickHandler.remove();
+          }
+
+
+
+          activeView._clickHandler = activeView.on("click", event => {
+            event.preventDefault(); // Prevent default behavior that may cause a boundary to appear
+            if (!layerView) return;
+            activeView.hitTest(event).then(response => {
+              const results = response.results.filter(r => r.graphic.layer === loadedFeatureLayer);
+              if (results.length) {
+                const feature = results[0].graphic;
+                if (highlightHandle) {
+                  highlightHandle.remove();
+                }
+                highlightHandle = layerView.highlight(feature);
+                activeView.popup.open({
+                  features: [feature],
+                  location: feature.geometry.centroid || feature.geometry.extent.center || event.mapPoint
+                });
+              } else {
+                if (highlightHandle) {
+                  highlightHandle.remove();
+                  highlightHandle = null;
+                }
+                activeView.popup.close();
+              }
+            });
+          });
+        });
+      }
+
+
+
+      // Query features from loaded layer for feature search
+      // Limits to max 2000 features for performance
+      async function queryFeaturesForSearch(featureLayer) {
+        featureSearchData = [];
+        featureSearchField = null;
+
+        const query = featureLayer.createQuery();
+
+        // Reduced buffer distance for better performance
+        const bufferDistance = 5; // Set buffer distance in meters (adjust as needed)
+        const bufferedGeometry = geometryEngine.buffer(activeView.extent, bufferDistance, "meters");
+
+        query.geometry = bufferedGeometry; // Set the geometry to the buffered area
+        query.outFields = ["*"];
+        query.returnGeometry = true; // we just want fields initially
+        query.orderByFields = []; // no order
+        query.num = 1000; // Reduced number of features to query
+
+        const results = await featureLayer.queryFeatures(query);
+
+        if (!results.features.length) {
+            return;
+        }
+
+        featureSearchData = results.features;
+
+
+        // Validate if "Name" field exists and is of type 'string'
+        const fields = featureLayer.fields;
+        let preferredField = ["Name", "NAME", "name","name_en"].find(fldName =>
+          fields.some(fld => fld.name === fldName && fld.type === "string"));
+        if (!preferredField) {
+          // find first string field which is not objectid or geometry
+          const stringField = fields.find(fld =>
+            fld.type === "string" &&
+            !/^OBJECTID$|^FID$|^Shape/i.test(fld.name));
+          preferredField = stringField ? stringField.name : fields[0].name;
+        }
+        featureSearchField = preferredField;
+      }
+
+
+
+      // Show/hide feature search input block
+      function showFeatureSearch() {
+        featureSearchBlock.style.display = "block";
+        featureSearchInput.value = "";
+        clearFeatureSuggestions();
+      }
+      function hideFeatureSearch() {
+        featureSearchBlock.style.display = "none";
+        clearFeatureSuggestions();
+      }
+
+
+
+      // --- Feature Search handlers ---
+
+
+
+      featureSearchInput.addEventListener("input", onFeatureInput);
+      featureSearchInput.addEventListener("keydown", onFeatureKeyDown);
+
+
+
+      function onFeatureInput(e) {
+        const input = e.target.value.trim().toLowerCase();
+        if (!input || featureSearchData.length === 0) {
+            clearFeatureSuggestions();
+            hideFeatureSuggestions();
+            return;
+        }
+
+
+
+        // Define the fields to search across, including the default field
+        const searchFields = [featureSearchField, "addr_city", "addr_country", "addr_postcode", "amenity"]; // Add more fields as needed
+
+
+
+        // Validate that the fields are available in the feature data
+        const validSearchFields = searchFields.filter(field => {
+            return featureSearchData[0].attributes.hasOwnProperty(field); // Check if the field exists in the first feature's attributes
+        });
+
+
+
+        // Filter features by checking if any of the valid specified fields contain the input substring
+        const filtered = featureSearchData.filter(f => {
+            return validSearchFields.some(field => {
+                const val = f.attributes[field];
+                return val && val.toString().toLowerCase().includes(input);
+            });
+        });
+
+
+
+        renderFeatureSuggestions(filtered);
+      }
+
+
+
+      function renderFeatureSuggestions(features) {
+        clearFeatureSuggestions();
+        if (features.length === 0) {
+          hideFeatureSuggestions();
+          return;
+        }
+        features.forEach((feature, idx) => {
+          const div = document.createElement("div");
+          div.setAttribute("role", "option");
+          div.dataset.featureIndex = idx;
+          div.textContent = feature.attributes[featureSearchField] || "(no value)";
+          div.addEventListener("mousedown", evt => {
+            evt.preventDefault();
+            selectFeatureSuggestion(idx);
+            featureSearchInput.value = feature.attributes[featureSearchField] || "";
+            zoomToFeature(feature);
+            clearFeatureSuggestions();
+            hideFeatureSuggestions();
+          });
+          featureSuggestions.appendChild(div);
+        });
+        featureSelectedIndex = -1;
+        showFeatureSuggestions();
+      }
+
+
+
+      function clearFeatureSuggestions() {
+        while (featureSuggestions.firstChild) {
+          featureSuggestions.firstChild.remove();
+        }
+      }
+
+
+
+      function showFeatureSuggestions() {
+        featureSuggestions.style.display = "block";
+      }
+      function hideFeatureSuggestions() {
+        featureSuggestions.style.display = "none";
+      }
+
+
+
+      function onFeatureKeyDown(e) {
+        const items = featureSuggestions.children;
+        if (!items.length) return;
+
+
+
+        switch (e.key) {
+          case "ArrowDown":
+            e.preventDefault();
+            if (featureSelectedIndex < items.length - 1) {
+              featureSelectedIndex++;
+              updateFeatureSuggestionHighlight();
+            }
+            break;
+          case "ArrowUp":
+            e.preventDefault();
+            if (featureSelectedIndex > 0) {
+              featureSelectedIndex--;
+              updateFeatureSuggestionHighlight();
+            }
+            break;
+          case "Enter":
+            e.preventDefault();
+            if (featureSelectedIndex >= 0 && featureSelectedIndex < items.length) {
+              items[featureSelectedIndex].dispatchEvent(new Event("mousedown"));
+              featureSearchInput.value = items[featureSelectedIndex].textContent || "";
+              clearFeatureSuggestions();
+              hideFeatureSuggestions();
+            } else {
+              const inputVal = featureSearchInput.value.trim().toLowerCase();
+              const matchFeature = featureSearchData.find(f => {
+                const val = f.attributes[featureSearchField];
+                return val && val.toString().toLowerCase() === inputVal;
+              });
+              if (matchFeature) {
+                zoomToFeature(matchFeature);
+              }
+              clearFeatureSuggestions();
+              hideFeatureSuggestions();
+            }
+            break;
+          case "Escape":
+            clearFeatureSuggestions();
+            hideFeatureSuggestions();
+            break;
+        }
+      }
+
+
+
+      function updateFeatureSuggestionHighlight() {
+        const items = featureSuggestions.children;
+        for (let i = 0; i < items.length; i++) {
+          if (i === featureSelectedIndex) {
+            items[i].classList.add("selected");
+            items[i].setAttribute("aria-selected", "true");
+          } else {
+            items[i].classList.remove("selected");
+            items[i].setAttribute("aria-selected", "false");
+          }
+        }
+      }
+
+
+
+      function selectFeatureSuggestion(index) {
+        const items = featureSuggestions.children;
+        if (index >= 0 && index < items.length) {
+          featureSelectedIndex = index;
+          updateFeatureSuggestionHighlight();
+          featureSearchInput.value = items[index].textContent.trim();
+        }
+      }
+
+
+
+      // Zoom to feature geometry and highlight it, open popup
+      function zoomToFeature(feature) {
+        if (!feature || !layerView) return;
+
+        // Remove previous highlight and popup
+        if (highlightHandle) {
+          highlightHandle.remove();
+          highlightHandle = null;
+        }
+        if (activeView.popup && typeof activeView.popup.close === "function") {
+          activeView.popup.close();
+        }
+
+        // Center and zoom on feature geometry
+        let geom = feature.geometry;
+        if (geom.type === "point") {
+          activeView.goTo({target: geom, zoom: Math.max(activeView.zoom, 18)}); // Increased zoom level from 14 to 17
+        } else if (geom.extent) {
+          // zoom to extent with padding
+          activeView.goTo(geom.extent.expand(1.5));
+        } else {
+          activeView.goTo(geom);
+        }
+
+        // Highlight feature
+        highlightHandle = layerView.highlight(feature);
+
+        // Open popup on feature location
+        if(activeView.popup){activeView.popup.open({
+          features: [feature],
+          location: geom.type === "point" ? geom : geom.extent ? geom.extent.center : activeView.center
+          });
+        }
+      }
+
+
+      async function zoomToAddress(addressResult) {
+
+        currentAbortRetreiveController = new AbortController();
+        const retrieveSignal = currentAbortRetreiveController.signal;
+
+
+        mapboxPOI_id = addressResult.attributes.MapboxId
+
+        const params = new URLSearchParams({
+            access_token: MAPBOX_ACCESS_TOKEN,
+            session_token: uuid
+          });
+
+        const retrieveResults = await fetch(`${geocodeRetrieveUrl}/${mapboxPOI_id}?${params}`, { retrieveSignal });
+        
+        if (!retrieveResults.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+        const geojsondata = await retrieveResults.json();
+            
+        const point = new Point({
+          longitude: geojsondata.features[0].properties.coordinates.longitude,
+          latitude: geojsondata.features[0].properties.coordinates.latitude
+        });
+
+        const symbol = new PictureMarkerSymbol({
+          url: "https://static.arcgis.com/images/Symbols/Shapes/RedPin1LargeB.png",
+          
+        });
+        
+        // Create a graphic for the address point
+        const addressGraphic = new Graphic({
+          geometry: point,
+          symbol: symbol,
+          attributes: {
+            Name: geojsondata.features[0].properties.name,
+            Address: geojsondata.features[0].properties.full_address,
+            Score: addressResult.score
+          },
+          popupTemplate: {
+            title: "📍 Address",
+            content: `
+              ${geojsondata.features[0].properties.name || 'N/A'}<br>
+              <b>Address:</b> ${geojsondata.features[0].properties.full_address}<br>
+            `
+          }
+        });
+        
+        // Clear previous address graphics (optional - remove if you want to keep multiple pins)
+        activeView.graphics.removeAll();
+        
+        // Add the address graphic
+        activeView.graphics.add(addressGraphic);
+       
+        // Zoom to the address
+        activeView.goTo({
+          target: point,
+          zoom: 16
+        },{
+          animate: false
+        })
+        // .then(() => {
+        //   // Open popup
+        //   activeView.popup.open({
+        //     features: [addressGraphic],
+        //     location: point
+        //   });
+        // });
+      }
+
+      // Close suggestions if click outside inputs or suggestions containers
+      document.addEventListener("click", evt => {
+        if (!serviceSearchInput.contains(evt.target) && !serviceSuggestions.contains(evt.target)) {
+          clearServiceSuggestions();
+          hideServiceSuggestions();
+        }
+        if (!featureSearchInput.contains(evt.target) && !featureSuggestions.contains(evt.target)) {
+          clearFeatureSuggestions();
+          hideFeatureSuggestions();
+        }
+      });
+
+
+
+      // Declare extentWatchHandle to manage extent watch lifecycle
+      let extentWatchHandle = null;
+
+      // Debounced queryFeaturesForSearch to reduce frequency on extent changes
+      const debouncedQueryFeaturesForSearch = debounce(() => {
+        if (loadedFeatureLayer) {
+          queryFeaturesForSearch(loadedFeatureLayer);
+        }
+      }, 500);
+
+      // Add an event listener for extent changes and assign to extentWatchHandle
+      extentWatchHandle = activeView.watch("extent", function(newExtent) {
+        debouncedQueryFeaturesForSearch();
+      });
+
+      // Function to update location info display
+      function updateLocationInfo() {
+        const center = view.center;
+        const zoom = view.zoom;
+        if (center && zoom !== undefined) {
+          const lat = center.latitude.toFixed(6);
+          const lon = center.longitude.toFixed(6);
+          locationInfoDiv.textContent = `Center: [${lat}, ${lon}] | Zoom: ${zoom.toFixed(2)}`;
+          // console.log(`Map center: [${lat}, ${lon}], Zoom level: ${zoom.toFixed(2)}`);
+        }
+      }
+
+      // Watch for changes in center and zoom to update location info
+      view.watch("center", updateLocationInfo);
+      view.watch("zoom", updateLocationInfo);
+
+      // Initial update
+      view.when(() => {
+        updateLocationInfo();
+      });
+
+	  // view.watch("extent", function(newExtent) {
+		// console.log(view.extent)
+	  // });
+    });
+
+    // JavaScript functions for popup control
+    function showCustomPopup() {
+        document.getElementById("popup-overlay").style.display = "block";
+        document.getElementById("custom-popup").style.display = "block";
+    }
+    function closeCustomPopup() {
+        document.getElementById("popup-overlay").style.display = "none";
+        document.getElementById("custom-popup").style.display = "none";
+    }
+  </script>
+</body>
+</html>
