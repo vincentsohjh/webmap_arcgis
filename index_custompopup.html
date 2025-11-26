@@ -511,11 +511,7 @@
   <!-- <div id="measurementDiv" style="position:absolute; top:12px; right:12px; z-index: 100; background:white; padding:8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div> -->
   <div id="scaleBarDiv" style="position:absolute; bottom:12px; left:12px; z-index: 100; background:white; padding:4px 8px; border-radius:6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
 
-  <div id="myPopup" class="my-popup hidden">
-    <div class="my-popup-content"></div>
-    <button id="closePopup">X</button>
-  </div>
-
+  
    <!-- Custom popup HTML -->
   <div id="popup-overlay"></div>
   <div id="custom-popup">
@@ -542,8 +538,9 @@
       "esri/symbols/PointSymbol3D",
       "esri/symbols/ObjectSymbol3DLayer",
       "esri/layers/GeoJSONLayer",
-      "esri/symbols/PictureMarkerSymbol"
-      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, GeoJSONLayer, PictureMarkerSymbol) {
+      "esri/symbols/PictureMarkerSymbol",
+      "esri/core/reactiveUtils"
+      ], function(Map, WebScene, MapView, SceneView, FeatureLayer, SceneLayer, VectorTileLayer, geometryEngine, Measurement, ScaleBar, TimeExtent, Graphic, Point, PointSymbol3D, ObjectSymbol3DLayer, GeoJSONLayer, PictureMarkerSymbol,reactiveUtils) {
  
 
       // Loading management
@@ -914,11 +911,7 @@
       // });
 
 
-      document.getElementById("closePopup").onclick = () => {
-        document.getElementById("myPopup").classList.add("hidden");
-      };
-
-
+    
       // Create a MapView for 2D
       let mapView = new MapView({
         container: null, // Initially not attached
@@ -930,6 +923,28 @@
         }
       });
 
+      mapView.popupEnabled = false;
+
+
+      mapView.on("click", function(event) {
+          mapView.hitTest(event).then(function(response) {
+              const graphic = response.results[0]?.graphic;
+              if (graphic && graphic.attributes) {
+                  // Set title
+                  document.getElementById("popup-title").textContent = "All Feature Attributes";
+                  // Dynamically build list of all attributes
+                  const attributesList = document.getElementById("popup-attributes");
+                  attributesList.innerHTML = ""; // Clear previous content
+                  for (const [key, value] of Object.entries(graphic.attributes)) {
+                      const listItem = document.createElement("li");
+                      listItem.innerHTML = `<strong>${key}:</strong> ${value || 'N/A'}`;
+                      attributesList.appendChild(listItem);
+                  }
+                  showCustomPopup();
+              }
+          });
+      });
+
       // Current active view
       let activeView = view;
 
@@ -939,12 +954,13 @@
         if (activeView === view) {
           // Switch to 2D MapView
           // Sync center and zoom from 3D view to 2D view
+          activeView = mapView;
           mapView.center = view.center;
           mapView.zoom = view.zoom;
           view.container = null;
           mapView.container = "viewDiv";
-          activeView = mapView;
           toggleViewBtn.textContent = "Switch 3D";
+          mapView.popupEnabled = false;
 
           // Update extent watch for activeView change
           if (extentWatchHandle) {
@@ -953,14 +969,15 @@
           extentWatchHandle = activeView.watch("extent", function(newExtent) {
             debouncedQueryFeaturesForSearch();
           });
+          setupWatchers(activeView)
         } else {
           // Switch to 3D SceneView
           // Sync center and zoom from 2D view to 3D view
+          activeView = view;
           view.center = mapView.center;
           view.zoom = mapView.zoom;
           mapView.container = null;
           view.container = "viewDiv";
-          activeView = view;
           toggleViewBtn.textContent = "Switch 2D";
 
           // Update extent watch for activeView change
@@ -970,6 +987,8 @@
           extentWatchHandle = activeView.watch("extent", function(newExtent) {
             debouncedQueryFeaturesForSearch();
           });
+          setupWatchers(activeView)
+
         }
       });
 
@@ -1237,13 +1256,12 @@
 
       
 
-
       // Lazy load Measurement widget after view is ready
       let measurement;
-      view.when(() => {
+      activeView.when(() => {
         setTimeout(() => {
           measurement = new Measurement({
-            view: view,
+            view: activeView,
             container: "measurementDiv"
           });
         }, 2000); // Delay 2 seconds to reduce initial load
@@ -1251,7 +1269,7 @@
 
       // Add ScaleBar widget
       const scaleBar = new ScaleBar({
-        view: view,
+        view: activeView,
         container: "scaleBarDiv",
         unit: "metric" // or "dual" for metric and imperial
       });
@@ -1270,7 +1288,7 @@
       locationInfoDiv.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
       locationInfoDiv.style.userSelect = "none";
       locationInfoDiv.textContent = "Loading location...";
-      view.container.appendChild(locationInfoDiv);
+      activeView.container.appendChild(locationInfoDiv);
 
       
       // Combined sublayers list
@@ -2087,9 +2105,9 @@
       });
 
       // Function to update location info display
-      function updateLocationInfo() {
-        const center = view.center;
-        const zoom = view.zoom;
+      function updateLocationInfo(activeView) {
+        const center = activeView.center;
+        const zoom = activeView.zoom;
         if (center && zoom !== undefined) {
           const lat = center.latitude.toFixed(6);
           const lon = center.longitude.toFixed(6);
@@ -2099,13 +2117,38 @@
       }
 
       // Watch for changes in center and zoom to update location info
-      view.watch("center", updateLocationInfo);
-      view.watch("zoom", updateLocationInfo);
+      // activeView.watch("center", updateLocationInfo);
+      // activeView.watch("zoom", updateLocationInfo);
 
-      // Initial update
-      view.when(() => {
-        updateLocationInfo();
-      });
+      // // Initial update
+      // activeView.when(() => {
+      //   console.log("changed view");
+      //   updateLocationInfo();
+      // });
+
+
+      // Function to watch properties on the current view
+      function setupWatchers(view) {
+        // Watch zoom
+        reactiveUtils.watch(
+          () => view.zoom,
+          (newZoom) => {
+            updateLocationInfo(view);
+            // console.log(`Zoom changed to: ${newZoom} on ${view.constructor.name}`);
+          }
+        );
+        // Watch center (for MapView) or camera (for SceneView, if needed)
+        reactiveUtils.watch(
+          () => view.center,
+          (newCenter) => {
+            updateLocationInfo(view);
+            // console.log(`Center changed to: ${newCenter.longitude}, ${newCenter.latitude} on ${view.constructor.name}`);
+          }
+        );
+      }
+
+      setupWatchers(activeView);
+
 
 	  // view.watch("extent", function(newExtent) {
 		// console.log(view.extent)
